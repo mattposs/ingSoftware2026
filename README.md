@@ -15,7 +15,6 @@
 - [Alcance](#alcance)
 - [Arquitectura Medallion](#arquitectura-medallion)
 - [Reglas de Data Quality](#reglas-de-data-quality)
-- [Requerimientos](#requerimientos)
 - [Stack tecnológico](#stack-tecnológico)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Instalación y ejecución](#instalación-y-ejecución)
@@ -116,34 +115,6 @@ flowchart TD
 | Sin cambios anormales entre mediciones consecutivas | Anomalía | Warning |
 
 > Los rangos exactos se definen en el archivo de configuración de reglas (`config/`), versionado junto al código. <!-- TODO: completar link al archivo de reglas -->
-
-## Requerimientos
-
-### Funcionales
-
-| ID | Requerimiento |
-|---|---|
-| RF01 | Ingesta periódica desde Open-Meteo API y sensores simulados |
-| RF02 | Almacenamiento de datos originales (raw) |
-| RF03 | Ejecución automática de reglas de calidad |
-| RF04 | Clasificación de registros: válidos, inválidos, warnings |
-| RF05 | Separación de registros que incumplen reglas críticas |
-| RF06 | Transformación de datos validados para su consumo |
-| RF07 | Cálculo de indicadores de calidad |
-| RF08 | Registro de los errores detectados |
-| RF09 | Ejecución automática de tests ante cada modificación del código |
-| RF10 | Disponibilización de datos validados para visualización |
-
-### No funcionales
-
-| ID | Requerimiento |
-|---|---|
-| RNF01 | Automatización de ingesta, validación y transformación |
-| RNF02 | Trazabilidad del origen y fecha de cada dato |
-| RNF03 | Reproducibilidad sobre los datos originales |
-| RNF04 | Los datos que incumplen reglas críticas no llegan a Gold |
-| RNF05 | Código y reglas versionados con Git |
-| RNF06 | Reglas modificables sin rediseñar el pipeline |
 
 ## Stack tecnológico
 
