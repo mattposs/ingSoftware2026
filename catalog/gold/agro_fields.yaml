@@ -1,0 +1,44 @@
+dataset_name: agro_fields_gold
+domain: agro
+entity: fields
+layer: gold
+description: 'Campos del cliente (fuente: config/fields.yaml).'
+location: postgres:gold.fields
+last_cataloged_at: '2026-10-02T22:15:41.133264+00:00'
+columns:
+- name: field_id
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: C01
+  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+- name: nombre
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: La Aurora
+  description: Nombre del campo.
+- name: provincia
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: Buenos Aires
+  description: Provincia donde está el campo.
+- name: latitude
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '-34.05'
+  description: Latitud de la estación del campo, en grados decimales.
+- name: longitude
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '-60.55'
+  description: Longitud de la estación del campo, en grados decimales.
+- name: hectareas
+  data_type: int64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '3200'
+  description: Superficie del campo en hectáreas.

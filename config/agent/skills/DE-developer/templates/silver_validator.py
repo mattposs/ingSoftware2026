@@ -2,10 +2,28 @@
 silver_validator.py
 Módulo genérico para evaluación vectorizada de reglas de Data Quality y
 bifurcación hacia Silver (Clean Parquet) y Quarantine (Rejected Parquet).
+
+Soporta tres estados por registro:
+    VALID   -> no falló ninguna regla.
+    WARNING -> solo fallaron reglas de advertencia: va a Silver marcado.
+    INVALID -> falló al menos una regla de rechazo: va a Quarantine con los motivos.
 """
 
 import pandas as pd
-from bronze_writer import write_to_parquet_lake
+
+try:  # importado como paquete: from templates.silver_validator import ...
+    from .bronze_writer import write_to_parquet_lake
+except ImportError:  # ejecutado desde la carpeta templates/
+    from bronze_writer import write_to_parquet_lake
+
+
+def _failures(rules: dict[str, pd.Series]) -> pd.DataFrame:
+    # Matriz de fallos: True = la regla falló. Un NaN en la condición cuenta como fallo.
+    return pd.DataFrame({code: ~cond.fillna(False).astype(bool) for code, cond in rules.items()})
+
+
+def _codes(failures: pd.DataFrame) -> pd.Series:
+    return failures.apply(lambda row: ";".join(row.index[row].tolist()), axis=1)
 
 
 def validate_and_quarantine(
@@ -13,51 +31,43 @@ def validate_and_quarantine(
     rules: dict[str, pd.Series],
     domain: str,
     entity: str,
-    base_path: str = "data"
+    batch_id: str,
+    warning_rules: dict[str, pd.Series] | None = None,
+    base_path: str = "storage"
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Evalúa un conjunto declarativo de reglas de calidad booleanas sobre el DataFrame.
-    Bifurca los datos válidos hacia Silver y los datos que violan reglas hacia Quarantine,
-    adjuntando en estos últimos la lista de motivos de fallo.
+    Evalúa reglas booleanas declarativas sobre el lote y bifurca los registros.
 
     Args:
-        df: DataFrame de Pandas correspondiente al batch que se está procesando.
-        rules: Diccionario con la estructura:
-               { "CODIGO_ERROR": Serie booleana donde True = Válido y False = Inválido }
-        domain: Dominio del negocio (ej. 'iot', 'finanzas').
-        entity: Entidad procesada (ej. 'sensores', 'facturas').
-        base_path: Ruta base del storage de datos.
+        df: DataFrame del batch que se está procesando.
+        rules: reglas de RECHAZO { "CODIGO": Serie booleana (True = válido) }.
+        warning_rules: reglas de ADVERTENCIA con la misma estructura (opcional).
+        domain / entity: ubicación en el lake.
+        batch_id: identificador del lote (se usa para nombrar los archivos).
+        base_path: raíz del lake.
 
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: (df_validos, df_rechazados)
+        (df_silver con columnas dq_status y _dq_warnings, df_quarantine con _rejection_reasons)
     """
-    # Matriz de fallos: True representa que la regla falló
-    failure_matrix = pd.DataFrame(
-        {rule_code: ~condition for rule_code, condition in rules.items()}
-    )
+    reject = _failures(rules) if rules else pd.DataFrame(index=df.index)
+    warn = _failures(warning_rules) if warning_rules else pd.DataFrame(index=df.index)
 
-    # Un registro es válido si y solo si ninguna regla falló
-    is_valid_mask = ~failure_matrix.any(axis=1)
+    is_invalid = reject.any(axis=1) if not reject.empty else pd.Series(False, index=df.index)
+    has_warning = warn.any(axis=1) if not warn.empty else pd.Series(False, index=df.index)
 
-    df_valid = df[is_valid_mask].copy()
-    df_invalid = df[~is_valid_mask].copy()
+    df_valid = df[~is_invalid].copy()
+    df_valid["dq_status"] = has_warning[~is_invalid].map({True: "WARNING", False: "VALID"})
+    df_valid["_dq_warnings"] = _codes(warn[~is_invalid]).replace("", None) if not warn.empty else None
 
-    # Si hay registros inválidos, documentar los motivos y almacenar en Quarantine
+    df_invalid = df[is_invalid].copy()
     if not df_invalid.empty:
-        rejection_reasons = failure_matrix[~is_valid_mask].apply(
-            lambda row: ";".join(row.index[row].tolist()), axis=1
-        )
-        df_invalid["_rejection_reasons"] = rejection_reasons
+        df_invalid["_rejection_reasons"] = _codes(reject[is_invalid])
         df_invalid["_rejected_at"] = pd.Timestamp.now(tz="UTC")
-        write_to_parquet_lake(
-            df_invalid, layer="quarantine", domain=domain, entity=entity, base_path=base_path
-        )
-        print(f"[QUARANTINE] {len(df_invalid)} registros rechazados almacenados.")
 
-    # Almacenar registros válidos en Silver
-    write_to_parquet_lake(
-        df_valid, layer="silver", domain=domain, entity=entity, base_path=base_path
-    )
-    print(f"[SILVER] {len(df_valid)} registros limpios almacenados.")
+    # replace=True: reprocesar el mismo lote regenera Silver/Quarantine sin duplicar.
+    write_to_parquet_lake(df_invalid, "quarantine", domain, entity, batch_id, base_path, replace=True)
+    write_to_parquet_lake(df_valid, "silver", domain, entity, batch_id, base_path, replace=True)
+    print(f"[SILVER] {len(df_valid)} limpios ({int(has_warning[~is_invalid].sum())} con warning) | "
+          f"[QUARANTINE] {len(df_invalid)} rechazados.")
 
     return df_valid, df_invalid

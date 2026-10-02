@@ -8,6 +8,7 @@ las anotaciones previas en caso de cambios de esquema (Schema Drift).
 import os
 from datetime import datetime, timezone
 from typing import Any
+
 import yaml
 
 
@@ -26,12 +27,13 @@ class CatalogManager:
         entity: str,
         layer: str,
         description: str,
-        location: str,  # ej. "data/silver/iot/weather/" o "postgres:gold.daily_weather"
+        location: str,  # ej. "storage/silver/iot/weather/" o "postgres:gold.daily_weather"
         columns_technical: list[dict[str, Any]],
         column_descriptions: dict[str, str] | None = None
     ) -> str:
         """
         Registra un dataset o actualiza sus columnas preservando descripciones previas.
+        Las columnas que desaparecieron del dataset se informan por consola.
         """
         column_descriptions = column_descriptions or {}
         file_path = self.get_catalog_path(layer, domain, entity)
@@ -42,10 +44,10 @@ class CatalogManager:
 
         # 1. Si ya existe, conservar descripciones existentes
         if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 existing_data = yaml.safe_load(f) or {}
             for col in existing_data.get("columns", []):
-                if col.get("description"):
+                if col.get("description") and col["description"] != "Sin descripción.":
                     existing_col_descriptions[col["name"]] = col["description"]
 
         # 2. Construir lista actualizada de columnas
@@ -62,9 +64,14 @@ class CatalogManager:
                 "name": col_name,
                 "data_type": tech_col["data_type"],
                 "nullable": tech_col["nullable"],
+                "null_percentage": tech_col.get("null_percentage"),
                 "sample_value": tech_col.get("sample_value"),
                 "description": desc
             })
+
+        removed = set(existing_col_descriptions) - {c["name"] for c in columns_technical}
+        if removed:
+            print(f"[CATALOG] Columnas que ya no existen en el dataset: {sorted(removed)}")
 
         # 3. Armar documento de catálogo
         catalog_entry = {

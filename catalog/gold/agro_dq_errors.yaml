@@ -1,0 +1,84 @@
+dataset_name: agro_dq_errors_gold
+domain: agro
+entity: dq_errors
+layer: gold
+description: Registro de hallazgos de Data Quality (rechazos y warnings) por registro,
+  regla y variable.
+location: postgres:gold.dq_errors
+last_cataloged_at: '2026-10-02T22:15:41.533621+00:00'
+columns:
+- name: error_id
+  data_type: int64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '447'
+  description: Identificador del hallazgo.
+- name: _batch_id
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  description: Identificador UUID de la corrida que generó el registro (linaje).
+- name: detected_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-02 22:11:08.849569+00:00'
+  description: Instante UTC en que se detectó el hallazgo.
+- name: measured_at
+  data_type: datetime64[us, UTC]
+  nullable: true
+  null_percentage: 3.41
+  sample_value: '2026-10-02 01:45:00+00:00'
+  description: Fecha y hora de la medición afectada (vacío si el timestamp era inválido).
+- name: source
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: iot_simulator
+  description: 'Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones
+    cada 15 min).'
+- name: field_id
+  data_type: str
+  nullable: true
+  null_percentage: 3.41
+  sample_value: C02
+  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+- name: variable
+  data_type: str
+  nullable: true
+  null_percentage: 14.2
+  sample_value: temperature
+  description: Variable afectada (temperature, humidity, ...); vacío si la regla aplica
+    al registro completo.
+- name: rule_id
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: DQ01
+  description: Código de la regla incumplida (DQ01 a DQ12, ver config/rules.yaml).
+- name: rule_type
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: Completitud
+  description: 'Tipo de regla: Completitud, Unicidad, Validez, Consistencia, Integridad
+    o Anomalía.'
+- name: action
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: REJECT
+  description: REJECT (el registro fue a quarantine) o WARNING (publicado y marcado).
+- name: severidad
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: Crítica
+  description: 'Criticidad de la regla: Crítica, Alta o Media.'
+- name: detalle
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: timestamp nulo o vacío
+  description: Explicación legible del hallazgo.

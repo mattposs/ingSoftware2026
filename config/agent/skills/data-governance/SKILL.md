@@ -44,7 +44,7 @@ domain: telemetry
 entity: devices
 layer: silver
 description: Mediciones telemétricas de sensores IoT depuradas y validadas.
-location: data/silver/telemetry/devices/
+location: storage/silver/telemetry/devices/
 last_cataloged_at: "2026-03-30T14:40:00Z"
 columns:
   - name: device_id
@@ -104,7 +104,10 @@ from templates.catalog_manager import CatalogManager
 from templates.dict_generator import generate_data_dictionary_md
 
 # Paso 1: Extraer firma técnica desde el Parquet (o desde un DataFrame con extract_column_metadata)
-columns_info = extract_from_parquet("data/silver/telemetry/devices/silver_clean.parquet")
+# Los archivos siguen la convención de la skill de-developer: clean_{batch_id}.parquet
+from glob import glob
+latest_clean = sorted(glob("storage/silver/telemetry/devices/year=*/month=*/clean_*.parquet"))[-1]
+columns_info = extract_from_parquet(latest_clean)
 
 # Paso 2: Redactar descripciones funcionales de las columnas
 descriptions = {
@@ -121,7 +124,7 @@ yaml_path = catalog_mgr.register_or_update_dataset(
     entity="devices",
     layer="silver",
     description="Lecturas de sensores IoT tras pasar por las reglas de Data Quality.",
-    location="data/silver/telemetry/devices/",
+    location="storage/silver/telemetry/devices/",
     columns_technical=columns_info,
     column_descriptions=descriptions
 )
@@ -137,6 +140,7 @@ generate_data_dictionary_md(yaml_path, output_docs_dir="docs/data_dictionary")
 Al crear o modificar un dataset en el pipeline:
 
 - [ ] ¿Se extrajo el esquema técnico directamente de los datos reales con `schema_extractor`?
+- [ ] ¿Se revisó `nullable`? Es lo observado en la muestra, no una restricción: en Silver puede figurar "No" aunque la columna admita nulos.
 - [ ] ¿Todas las columnas relevantes tienen una descripción funcional clara de negocio?
 - [ ] ¿Se especificó correctamente la capa (`bronze`, `silver`, `gold`) y la ubicación física o tabla?
 - [ ] ¿Se guardó el archivo YAML en `catalog/{layer}/{domain}_{entity}.yaml`?

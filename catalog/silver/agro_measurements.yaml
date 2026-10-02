@@ -1,0 +1,110 @@
+dataset_name: agro_measurements_silver
+domain: agro
+entity: measurements
+layer: silver
+description: 'Mediciones tipadas y validadas con DQ01–DQ12: registros VALID y WARNING
+  de ambas fuentes.'
+location: storage/silver/agro/measurements/
+last_cataloged_at: '2026-10-02T22:15:40.456781+00:00'
+columns:
+- name: timestamp
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-09-21 00:00:00+00:00'
+  description: Fecha y hora de la medición. En Bronze es el texto crudo recibido;
+    desde Silver, datetime UTC.
+- name: source
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: open_meteo
+  description: 'Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones
+    cada 15 min).'
+- name: field_id
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: C01
+  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+- name: latitude
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '-34.05'
+  description: Latitud de la estación del campo, en grados decimales.
+- name: longitude
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '-60.55'
+  description: Longitud de la estación del campo, en grados decimales.
+- name: temperature
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '12.8'
+  description: Temperatura del aire a 2 m, en °C.
+- name: humidity
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '82.0'
+  description: Humedad relativa ambiental, en % (0 a 100).
+- name: soil_moisture
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '0.407'
+  description: Humedad volumétrica del suelo (0 a 7 cm), en m³/m³.
+- name: precipitation
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '0.0'
+  description: Precipitación acumulada en el intervalo de la lectura, en mm.
+- name: wind_speed
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '1.5'
+  description: Velocidad del viento a 10 m, en km/h.
+- name: dq_status
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: VALID
+  description: 'Resultado de Data Quality: VALID (sin hallazgos) o WARNING (publicable
+    pero marcado para revisión).'
+- name: _dq_warnings
+  data_type: str
+  nullable: true
+  null_percentage: 98.05
+  sample_value: DQ12
+  description: Códigos de las reglas de warning que disparó el registro, separados
+    por ';' (ej. DQ09;DQ11).
+- name: _sim_injected_error
+  data_type: string
+  nullable: true
+  null_percentage: 99.61
+  sample_value: gap
+  description: 'Solo simulador: tipo de error inyectado a propósito, para medir la
+    detección de las reglas (meta SMART 95%). Vacío en datos sin error y en Open-Meteo.'
+- name: _batch_id
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  description: Identificador UUID de la corrida que generó el registro (linaje).
+- name: _ingested_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-02 22:11:06.638697+00:00'
+  description: Instante UTC en que el registro se capturó desde la fuente (linaje).
+- name: _source_system
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: open_meteo
+  description: 'Conector que originó el registro: open_meteo o iot_simulator (linaje).'

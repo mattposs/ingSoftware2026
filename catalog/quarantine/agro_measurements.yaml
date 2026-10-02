@@ -1,0 +1,142 @@
+dataset_name: agro_measurements_quarantine
+domain: agro
+entity: measurements
+layer: quarantine
+description: Registros rechazados (INVALID), sin modificar, con los motivos de rechazo.
+location: storage/quarantine/agro/measurements/
+last_cataloged_at: '2026-10-02T22:15:40.647072+00:00'
+columns:
+- name: timestamp
+  data_type: string
+  nullable: true
+  null_percentage: 7.5
+  sample_value: '2026-10-02T01:45:00Z'
+  description: Fecha y hora de la medición. En Bronze es el texto crudo recibido;
+    desde Silver, datetime UTC.
+- name: field_id
+  data_type: string
+  nullable: true
+  null_percentage: 15.0
+  sample_value: C01
+  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+- name: latitude
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '-34.05'
+  description: Latitud de la estación del campo, en grados decimales.
+- name: longitude
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '-60.55'
+  description: Longitud de la estación del campo, en grados decimales.
+- name: temperature
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '12.52'
+  description: Temperatura del aire a 2 m, en °C.
+- name: temperature_unit
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: °C
+  description: Unidad informada por la fuente para temperature (se espera °C, regla
+    DQ06).
+- name: humidity
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '77.6'
+  description: Humedad relativa ambiental, en % (0 a 100).
+- name: humidity_unit
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '%'
+  description: Unidad informada por la fuente para humidity (se espera %, regla DQ06).
+- name: soil_moisture
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '0.274'
+  description: Humedad volumétrica del suelo (0 a 7 cm), en m³/m³.
+- name: soil_moisture_unit
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: m³/m³
+  description: Unidad informada por la fuente para soil_moisture (se espera m³/m³,
+    regla DQ06).
+- name: precipitation
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '0.0'
+  description: Precipitación acumulada en el intervalo de la lectura, en mm.
+- name: precipitation_unit
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: mm
+  description: Unidad informada por la fuente para precipitation (se espera mm, regla
+    DQ06).
+- name: wind_speed
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '14.2'
+  description: Velocidad del viento a 10 m, en km/h.
+- name: wind_speed_unit
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: km/h
+  description: Unidad informada por la fuente para wind_speed (se espera km/h, regla
+    DQ06).
+- name: source
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: iot_simulator
+  description: 'Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones
+    cada 15 min).'
+- name: _sim_injected_error
+  data_type: string
+  nullable: false
+  null_percentage: 0.0
+  sample_value: null_field
+  description: 'Solo simulador: tipo de error inyectado a propósito, para medir la
+    detección de las reglas (meta SMART 95%). Vacío en datos sin error y en Open-Meteo.'
+- name: _batch_id
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  description: Identificador UUID de la corrida que generó el registro (linaje).
+- name: _ingested_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-02 22:11:07.360263+00:00'
+  description: Instante UTC en que el registro se capturó desde la fuente (linaje).
+- name: _source_system
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: iot_simulator
+  description: 'Conector que originó el registro: open_meteo o iot_simulator (linaje).'
+- name: _rejection_reasons
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: DQ02
+  description: Códigos de las reglas críticas que incumplió el registro, separados
+    por ';' (ej. DQ05;DQ07).
+- name: _rejected_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-02 22:11:08.756432+00:00'
+  description: Instante UTC en que el registro fue enviado a quarantine.

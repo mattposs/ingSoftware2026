@@ -1,0 +1,24 @@
+[project]
+name = "agro-dataops-pipeline"
+version = "0.1.0"
+description = "Pipeline DataOps para calidad de datos agroclimáticos IoT (POC UADE 2026)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["db: tests de integración que necesitan PostgreSQL (TEST_DATABASE_URL)"]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.ruff]
+line-length = 135
+target-version = "py311"
+extend-exclude = [
+    "notebooks", ".agents", "config/agent",
+    # notebooks vacías (0 bytes) de la estructura inicial: borrar src/Bronce, src/plata y src/oro
+    "src/Bronce", "src/plata", "src/oro",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
