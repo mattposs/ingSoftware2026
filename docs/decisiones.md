@@ -19,7 +19,7 @@ alcanza con editar `config/*.yaml`.
 | D10 | `gold.dq_errors` | Se agregaron `measured_at` y `source` (RF08 pide la fecha del dato, no solo la de detección). Se registran rechazos **y** warnings (columna `action`). | `sql/01_schema.sql` | Propuesta |
 | D11 | Lake en `storage/` | El lake Parquet va en `storage/` (ignorado por Git). `data/` queda para datos manuales de tests. | `config/pipeline.yaml` → `storage_path` | Implementada |
 | D12 | Stack | Pandas + PyArrow + Pytest (sin Polars ni Great Expectations), como en 8.1. Airflow sigue siendo opcional. | `requirements.txt` | Propuesta |
-| D13 | Ubicación de las skills | Hay copias en `.agents/skills/` y en `config/agent/skills/`. Se recomienda dejar una sola, `.agents/skills/` (convención de agentes), y que `config/` quede solo para la configuración del pipeline. Las dos copias de `data-governance` quedaron idénticas. | — | **Pendiente (equipo)** |
+| D13 | Ubicación de las skills | Única ubicación: `.agents/skills/` (convención de agentes), con `de-developer` y `data-governance`. Se eliminó la copia duplicada de `config/agent/skills/`: `config/` queda solo para la configuración del pipeline. | `.agents/skills/` | Implementada |
 
 ## Preguntas abiertas para el taller de reglas (S2)
 

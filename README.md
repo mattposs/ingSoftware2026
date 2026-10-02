@@ -132,8 +132,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 
 ```
 .
-├── .agents/skills/            # Skills del agente (data-governance)
-├── config/agent/skills/       # Skills del agente (de-developer y copia de data-governance; unificar, ver D13)
+├── .agents/skills/            # Skills del agente: de-developer y data-governance
 ├── .github/workflows/ci.yml   # Lint + validación de reglas + tests + build Docker
 ├── catalog/                   # Catálogo de datasets en YAML (skill data-governance)
 ├── config/
