@@ -1,3 +1,4 @@
+# docker compose up -d   -> base de datos + pipeline programado + dashboard (http://localhost:3000)
 services:
   postgres:
     image: postgres:16
@@ -12,7 +13,49 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
+  # Ejecución programada (EDT 7.3): una corrida incremental cada PIPELINE_INTERVAL_SECONDS.
+  scheduler:
+    build: .
+    command: ["python", "-m", "src.scheduler"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Dashboard (EDT 8.1): lee solo gold.* con el usuario de solo lectura.
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    env_file: .env
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Definir GRAFANA_ADMIN_PASSWORD en .env}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"          # ver el dashboard sin login (solo lectura)
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: dark
+      GF_USERS_DEFAULT_LANGUAGE: es-ES
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/calidad-datos.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Corrida manual: docker compose run --rm pipeline
   pipeline:
     build: .
     env_file: .env
@@ -24,7 +67,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    profiles: ["run"]   # no arranca con "up"; se ejecuta con: docker compose run --rm pipeline
+    profiles: ["run"]
 
 volumes:
   pgdata:
+  grafana-data:

@@ -20,6 +20,8 @@ alcanza con editar `config/*.yaml`.
 | D11 | Lake en `storage/` | El lake Parquet va en `storage/` (ignorado por Git). `data/` queda para datos manuales de tests. | `config/pipeline.yaml` → `storage_path` | Implementada |
 | D12 | Stack | Pandas + PyArrow + Pytest (sin Polars ni Great Expectations), como en 8.1. Airflow sigue siendo opcional. | `requirements.txt` | Propuesta |
 | D13 | Ubicación de las skills | Única ubicación: `.agents/skills/` (convención de agentes), con `de-developer` y `data-governance`. Se eliminó la copia duplicada de `config/agent/skills/`: `config/` queda solo para la configuración del pipeline. | `.agents/skills/` | Implementada |
+| D14 | Dashboard | Grafana OSS 11.4 provisionado desde el repo (fuente de datos + dashboard en `grafana/`), con el usuario `dashboard` de solo lectura sobre `gold`. Acceso anónimo de solo lectura habilitado para la demo local; en producción se desactiva (`GF_AUTH_ANONYMOUS_ENABLED=false`). Mapa base OpenStreetMap (Carto ahora exige API key). | `docker-compose.yml`, `grafana/` | Propuesta |
+| D15 | Ejecución programada | Servicio `scheduler` (`python -m src.scheduler`) que corre el pipeline cada 15 minutos (la frecuencia de los sensores). Es la versión simple de la tarea 7.3; Airflow sigue siendo opcional. | `.env` → `PIPELINE_INTERVAL_SECONDS` | Implementada |
 
 ## Preguntas abiertas para el taller de reglas (S2)
 

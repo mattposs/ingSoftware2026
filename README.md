@@ -140,6 +140,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 │   ├── fields.yaml            # Campos del cliente (C01–C06)
 │   └── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
+├── grafana/                   # Dashboard provisionado (fuente de datos + calidad-datos.json)
 ├── docs/
 │   ├── TPO_Pipeline_DataOps_Documento_Final_v7.{docx,pdf}
 │   ├── arquitectura.excalidraw
@@ -185,8 +186,9 @@ cd IngSoftwareETL
 # 2. Configurar variables de entorno (completar las contraseñas)
 cp .env.example .env
 
-# 3. Levantar PostgreSQL (crea los esquemas y los usuarios pipeline/dashboard)
-docker compose up -d postgres
+# 3. Levantar todo: PostgreSQL + pipeline programado (cada 15 min) + dashboard
+docker compose up -d
+# Dashboard: http://localhost:3000 (se ve sin login; admin / GRAFANA_ADMIN_PASSWORD para editar)
 
 # 4. Instalar dependencias en un entorno virtual
 python -m venv .venv
@@ -213,6 +215,21 @@ Para correr las etapas por separado y explorar los datos están las notebooks de
 > **Seguridad (RNF07):** nunca subir credenciales. `.env` está en `.gitignore`. En el pipeline de CI se usan GitHub Secrets, y el pipeline se conecta con un usuario de permisos mínimos.
 >
 > **Windows + OneDrive:** si la ruta del repo es muy larga, los archivos del lake pueden superar el límite de 260 caracteres. En ese caso, apuntar `STORAGE_PATH` a una ruta corta (ej. `C:\agro-storage`).
+
+## Dashboard
+
+Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con el dashboard *Calidad de datos agroclimáticos* ya cargado ([`grafana/dashboards/calidad-datos.json`](grafana/dashboards/calidad-datos.json)). Lee solo tablas de `gold`, con el usuario de solo lectura `dashboard`.
+
+| Sección | Qué muestra |
+|---|---|
+| Última corrida | DQ Score, registros procesados, VALID / WARNING / INVALID y hace cuánto corrió |
+| Evolución de la calidad | DQ Score por corrida (meta 95%) y hallazgos por regla DQ01–DQ12 |
+| Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 6 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
+| Calidad por campo y día | % de calidad por campo y día, y los últimos registros rechazados con su regla |
+
+Los filtros de arriba eligen la **fuente** (Open-Meteo o Simulador IoT) y los **campos**. El servicio `scheduler` corre el pipeline cada `PIPELINE_INTERVAL_SECONDS` (15 min por defecto), así que el tablero se actualiza solo.
+
+Colores: un color fijo por campo (paleta validada para daltonismo) y verde / amarillo / rojo solo para estados de calidad, siempre acompañados de un texto o un ícono.
 
 ## Tests
 

@@ -1,0 +1,20 @@
+# Fuente de datos del dashboard: PostgreSQL con el usuario de SOLO LECTURA sobre gold.*
+# (RNF04: el dashboard consume únicamente datos validados; RNF07: credenciales desde .env).
+apiVersion: 1
+
+datasources:
+  - name: Agro Gold
+    uid: agro-gold
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: ${DASHBOARD_DB_USER}
+    isDefault: true
+    editable: false
+    jsonData:
+      database: ${POSTGRES_DB}
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    secureJsonData:
+      password: ${DASHBOARD_DB_PASSWORD}
