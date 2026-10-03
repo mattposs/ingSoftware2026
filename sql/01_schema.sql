@@ -70,5 +70,20 @@ CREATE TABLE IF NOT EXISTS gold.dq_errors (
     detalle      TEXT
 );
 
+-- Trazabilidad del flujo Medallion (RNF02): qué hizo cada capa en cada lote.
+-- El lake Parquet no es legible desde el dashboard; esta tabla resume cada etapa.
+CREATE TABLE IF NOT EXISTS gold.pipeline_layer_metrics (
+    _batch_id     TEXT        NOT NULL REFERENCES gold.dq_run_metrics (_batch_id) ON DELETE CASCADE,
+    layer         TEXT        NOT NULL CHECK (layer IN ('bronze', 'silver', 'quarantine', 'gold')),
+    entity        TEXT        NOT NULL,  -- fuente (bronze) o tabla/entidad destino
+    rows          INTEGER     NOT NULL,
+    location      TEXT,                  -- carpeta del lake o tabla de PostgreSQL
+    window_start  TIMESTAMPTZ,           -- solo bronze: ventana incremental (inicio exclusivo)
+    window_end    TIMESTAMPTZ,
+    started_at    TIMESTAMPTZ,
+    finished_at   TIMESTAMPTZ,
+    PRIMARY KEY (_batch_id, layer, entity)
+);
+
 CREATE INDEX IF NOT EXISTS ix_dq_errors_batch ON gold.dq_errors (_batch_id);
 CREATE INDEX IF NOT EXISTS ix_dq_errors_field_date ON gold.dq_errors (field_id, measured_at);

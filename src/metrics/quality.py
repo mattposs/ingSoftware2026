@@ -39,6 +39,38 @@ def finish_run(engine: Engine, batch_id: str, status: str) -> None:
         )
 
 
+def record_layer(
+    engine: Engine,
+    batch_id: str,
+    layer: str,
+    entity: str,
+    rows: int,
+    started_at: datetime,
+    finished_at: datetime,
+    location: str | None = None,
+    window: tuple[datetime, datetime] | None = None,
+) -> None:
+    """Registra qué hizo una capa en el lote (gold.pipeline_layer_metrics). Idempotente."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO gold.pipeline_layer_metrics
+                    (_batch_id, layer, entity, rows, location, window_start, window_end, started_at, finished_at)
+                VALUES (:b, :l, :e, :r, :loc, :ws, :we, :s, :f)
+                ON CONFLICT (_batch_id, layer, entity) DO UPDATE
+                SET rows = EXCLUDED.rows, location = EXCLUDED.location,
+                    window_start = COALESCE(EXCLUDED.window_start, gold.pipeline_layer_metrics.window_start),
+                    window_end = COALESCE(EXCLUDED.window_end, gold.pipeline_layer_metrics.window_end),
+                    started_at = EXCLUDED.started_at, finished_at = EXCLUDED.finished_at
+                """
+            ),
+            {"b": batch_id, "l": layer, "e": entity, "r": int(rows), "loc": location,
+             "ws": window[0] if window else None, "we": window[1] if window else None,
+             "s": started_at, "f": finished_at},
+        )
+
+
 def errors_frame(result: ValidationResult, rules: dict, batch_id: str) -> pd.DataFrame:
     f = result.findings
     if f.empty:

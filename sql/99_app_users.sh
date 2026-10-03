@@ -20,4 +20,9 @@ CREATE ROLE :"dashboard_user" LOGIN PASSWORD :'dashboard_pass';
 GRANT CONNECT ON DATABASE :"DBNAME" TO :"dashboard_user";
 GRANT USAGE ON SCHEMA gold TO :"dashboard_user";
 GRANT SELECT ON ALL TABLES IN SCHEMA gold TO :"dashboard_user";
+
+-- Tablas que se agreguen más adelante heredan los mismos permisos.
+ALTER DEFAULT PRIVILEGES IN SCHEMA gold, etl GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"pipeline_user";
+ALTER DEFAULT PRIVILEGES IN SCHEMA gold GRANT USAGE ON SEQUENCES TO :"pipeline_user";
+ALTER DEFAULT PRIVILEGES IN SCHEMA gold GRANT SELECT ON TABLES TO :"dashboard_user";
 EOSQL

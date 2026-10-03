@@ -60,6 +60,14 @@ def test_corrida_completa_con_simulador(engine):
     assert run["total"] == run["valid"] + run["warning"] + run["invalid"]
     assert gold_rows > 0 and errors > 0
 
+    # El flujo por capas cierra: lo que entra a Bronze sale por Silver o por Quarantine.
+    with engine.connect() as conn:
+        layers = dict(conn.execute(
+            text("SELECT layer, sum(rows) FROM gold.pipeline_layer_metrics WHERE _batch_id = :b GROUP BY layer"),
+            {"b": batch}).all())
+    assert layers["bronze"] == layers["silver"] + layers["quarantine"] == run["total"]
+    assert layers["gold"] > 0
+
     # Reprocesar el mismo lote deja la base igual (idempotencia).
     pipeline.reprocess(batch, engine)
     with engine.connect() as conn:

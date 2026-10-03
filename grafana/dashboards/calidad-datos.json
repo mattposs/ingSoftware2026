@@ -68,6 +68,16 @@
       }
     ]
   },
+  "links": [
+    {
+      "title": "Flujo del ETL",
+      "type": "link",
+      "url": "/d/agro-flujo",
+      "icon": "dashboard",
+      "targetBlank": false,
+      "keepTime": true
+    }
+  ],
   "annotations": {
     "list": []
   },

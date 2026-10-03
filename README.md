@@ -227,6 +227,16 @@ Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con el da
 | Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 6 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
 | Calidad por campo y día | % de calidad por campo y día, y los últimos registros rechazados con su regla |
 
+Un segundo dashboard, **Flujo del ETL (Bronze · Silver · Gold)** ([`grafana/dashboards/flujo-etl.json`](grafana/dashboards/flujo-etl.json)), muestra cómo se mueve cada lote por las capas. Los dos dashboards están enlazados entre sí (botón arriba a la derecha).
+
+| Sección | Qué muestra |
+|---|---|
+| Recorrido de los datos | Diagrama Fuentes → Bronze → Reglas DQ → Silver / Quarantine → Gold → Dashboards, con la cantidad de registros de cada etapa en el período |
+| ¿Qué hace cada capa? | Dónde vive cada capa, qué pasa en ella y su regla principal |
+| Lote a lote | Cómo se reparte cada lote entre Silver y Quarantine, cuánto tarda cada etapa, las ventanas incrementales por fuente y el historial de lotes |
+
+Estos datos salen de `gold.pipeline_layer_metrics`, donde cada etapa registra cuántos registros procesó, cuánto tardó y qué ventana pidió a la fuente.
+
 Los filtros de arriba eligen la **fuente** (Open-Meteo o Simulador IoT) y los **campos**. El servicio `scheduler` corre el pipeline cada `PIPELINE_INTERVAL_SECONDS` (15 min por defecto), así que el tablero se actualiza solo.
 
 Colores: un color fijo por campo (paleta validada para daltonismo) y verde / amarillo / rojo solo para estados de calidad, siempre acompañados de un texto o un ícono.

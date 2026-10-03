@@ -18,6 +18,7 @@ services:
   # Ejecución programada (EDT 7.3): una corrida incremental cada PIPELINE_INTERVAL_SECONDS.
   scheduler:
     build: .
+    image: agro-pipeline:local   # misma imagen que el servicio pipeline
     command: ["python", "-m", "src.scheduler"]
     env_file: .env
     environment:
@@ -58,6 +59,7 @@ services:
   # Corrida manual: docker compose run --rm pipeline
   pipeline:
     build: .
+    image: agro-pipeline:local
     env_file: .env
     environment:
       POSTGRES_HOST: postgres

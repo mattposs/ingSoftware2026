@@ -44,12 +44,15 @@ def run_bronze(engine: Engine, batch_id: str | None = None, now: datetime | None
         if win is None:
             print(f"[BRONZE] {source}: sin datos nuevos.")
             continue
+        started = datetime.now(UTC)
         df = extract_fn(fields, win, src_cfg, now)
         if not wrote_any:
             quality.start_run(engine, batch_id)
         df = lake.enrich_with_lineage(df, source_system=source, batch_id=batch_id)
         if lake.write_parquet(df, settings.storage_path, "bronze", cfg["domain"], source, batch_id):
             wrote_any = True
+        quality.record_layer(engine, batch_id, "bronze", source, len(df), started, datetime.now(UTC),
+                             location=f"storage/bronze/{cfg['domain']}/{source}/", window=win)
         # El watermark avanza al fin de la ventana una vez que el lote quedó en Bronze:
         # Silver y Gold se pueden reprocesar desde Bronze sin volver a llamar a la fuente.
         state.set(cfg["domain"], source, win[1], batch_id)
@@ -60,6 +63,7 @@ def run_bronze(engine: Engine, batch_id: str | None = None, now: datetime | None
 def run_silver(engine: Engine, batch_id: str, now: datetime | None = None) -> ValidationResult:
     settings, cfg, rules = get_settings(), load_pipeline(), load_rules()
     domain, entity = cfg["domain"], cfg["entity"]
+    started = datetime.now(UTC)
 
     batch = pd.concat(
         [lake.read_layer(settings.storage_path, "bronze", domain, s, batch_id) for s in CONNECTORS],
@@ -77,6 +81,10 @@ def run_silver(engine: Engine, batch_id: str, now: datetime | None = None) -> Va
     lake.write_parquet(result.quarantine, settings.storage_path, "quarantine", domain, entity, batch_id, replace=True)
     quality.start_run(engine, batch_id)  # asegura la fila de la corrida (también en reprocesos)
     quality.record_quality(engine, result, rules, batch_id)
+    finished = datetime.now(UTC)
+    for layer, df in (("silver", result.silver), ("quarantine", result.quarantine)):
+        quality.record_layer(engine, batch_id, layer, entity, len(df), started, finished,
+                             location=f"storage/{layer}/{domain}/{entity}/")
     return result
 
 
@@ -87,6 +95,7 @@ def sync_fields(engine: Engine) -> None:
 def run_gold(engine: Engine, batch_id: str) -> int:
     settings, cfg = get_settings(), load_pipeline()
     domain, entity, tz = cfg["domain"], cfg["entity"], cfg["business_timezone"]
+    started = datetime.now(UTC)
 
     sync_fields(engine)
     silver_batch = lake.read_layer(settings.storage_path, "silver", domain, entity, batch_id)
@@ -97,6 +106,8 @@ def run_gold(engine: Engine, batch_id: str) -> int:
         keys, tz, batch_id,
     )
     rows = db.upsert(metrics, engine, "gold", "daily_field_metrics", gold.GOLD_KEYS)
+    quality.record_layer(engine, batch_id, "gold", "daily_field_metrics", rows, started, datetime.now(UTC),
+                         location="postgres:gold.daily_field_metrics")
     quality.finish_run(engine, batch_id, "ok")
     return rows
 
