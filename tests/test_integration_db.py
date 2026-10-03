@@ -56,6 +56,7 @@ def test_corrida_completa_con_simulador(engine):
         errors = conn.execute(text("SELECT count(*) FROM gold.dq_errors WHERE _batch_id = :b"), {"b": batch}).scalar()
 
     assert run["status"] == "ok"
+    assert run["run_start"] < run["run_end"]  # run_start es el inicio de la ingesta, no de Silver
     assert run["total"] == run["valid"] + run["warning"] + run["invalid"]
     assert gold_rows > 0 and errors > 0
 

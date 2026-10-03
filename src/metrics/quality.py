@@ -24,7 +24,7 @@ def start_run(engine: Engine, batch_id: str) -> None:
                 """
                 INSERT INTO gold.dq_run_metrics (_batch_id, run_start, status)
                 VALUES (:b, now(), 'running')
-                ON CONFLICT (_batch_id) DO UPDATE SET run_start = now(), run_end = NULL, status = 'running'
+                ON CONFLICT (_batch_id) DO UPDATE SET run_end = NULL, status = 'running'
                 """
             ),
             {"b": batch_id},
