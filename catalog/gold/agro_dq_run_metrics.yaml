@@ -4,25 +4,25 @@ entity: dq_run_metrics
 layer: gold
 description: Resumen de cada corrida del pipeline y su Data Quality Score.
 location: postgres:gold.dq_run_metrics
-last_cataloged_at: '2026-10-02T22:15:41.409178+00:00'
+last_cataloged_at: '2026-10-05T22:33:53.738686+00:00'
 columns:
 - name: _batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  sample_value: 54097779-734c-48c0-adbf-61f4b283aa89
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: run_start
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-02 22:11:08.378468+00:00'
+  sample_value: '2026-10-05 22:32:05.757785+00:00'
   description: Inicio de la corrida (UTC).
 - name: run_end
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-02 22:11:09.237352+00:00'
+  sample_value: '2026-10-05 22:32:09.443668+00:00'
   description: Fin de la corrida (UTC); vacío si sigue en curso o falló antes de terminar.
 - name: status
   data_type: str
@@ -34,29 +34,29 @@ columns:
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '1580'
+  sample_value: '6'
   description: Registros recibidos en el lote.
 - name: valid
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '1510'
+  sample_value: '5'
   description: Registros sin hallazgos.
 - name: warning
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '30'
+  sample_value: '1'
   description: Registros publicados con al menos un warning.
 - name: invalid
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '40'
+  sample_value: '0'
   description: Registros rechazados (enviados a quarantine).
 - name: dq_score
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '97.47'
+  sample_value: '100.0'
   description: Data Quality Score = (valid + warning) / total × 100.

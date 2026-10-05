@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY config/rules.yaml config/fields.yaml config/pipeline.yaml config/
+COPY config/ config/
 COPY src/ src/
 
 RUN useradd --create-home --uid 1000 pipeline && mkdir -p /app/storage && chown pipeline /app/storage

@@ -23,6 +23,13 @@ del repositorio. No se editó el .docx: aplicar a mano y regenerar el PDF.
 - **gold.dq_run_metrics:** agregar `status` (running / ok / failed).
 - **6.1, tabla Gold:** mencionar `fuente` como parte de la clave (D4).
 
+## Nuevo: entornos y ETL paso a paso (sumar a la v8)
+
+- **5.1 Alcance / 6. Arquitectura:** agregar los tres entornos (DEV, STAGING, PROD) aislados por base, lake y configuración, con promoción por CI/CD (decisiones D17 y D18). Aclarar que corren en forma local: no cambia el costo (sigue sin nube).
+- **7.1 EDT, tarea 7.3 "Ejecución programada y deploy":** detallar el *scheduler* por entorno y el flujo de promoción `:dev → :staging → :prod` con aprobación manual.
+- **9.2 Riesgos:** el riesgo R02 (scope creep) se mitiga separando lo que se prueba en DEV de lo que se muestra en PROD.
+- **11. POC:** para la demo, el dashboard *ETL paso a paso* sigue un registro real (por ejemplo, una humedad de 135 % rechazada por DQ07) desde la extracción hasta Quarantine, y uno válido hasta Gold.
+
 ## Secciones a completar con lo ya implementado
 
 - **11. POC:** el pipeline corre con `python -m src.main`. Datos reales de Open-Meteo y del simulador, las 12 reglas, quarantine con motivos, Gold en PostgreSQL. El test `test_reglas_detectan_al_menos_95_por_ciento_de_errores_inyectados` es la evidencia de la meta SMART de detección. Para la evidencia de "test que falla y luego pasa en CI", alcanza con cambiar un umbral en `config/rules.yaml` en una rama y abrir un PR.

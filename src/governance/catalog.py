@@ -81,6 +81,22 @@ GOLD = {
     "watermark": "Fin de la última ventana extraída de la fuente (UTC). La próxima corrida pide (watermark, ahora].",
     "last_batch_id": "Corrida que movió el watermark por última vez.",
     "updated_at": "Última actualización del watermark.",
+    "layer": "Capa del pipeline: bronze, silver, quarantine o gold.",
+    "rows": "Registros que la capa procesó en el lote.",
+    "location": "Dónde quedaron los datos: carpeta del lake o tabla de PostgreSQL.",
+    "window_start": "Solo bronze: inicio (exclusivo) de la ventana incremental pedida a la fuente.",
+    "window_end": "Solo bronze: fin de la ventana incremental (el nuevo watermark).",
+    "started_at": "Inicio de la etapa (UTC).",
+    "finished_at": "Fin de la etapa (UTC).",
+    "trace_id": "Identificador del registro de muestra: <lote>-<n>.",
+    "created_at": "Cuándo se guardó la traza.",
+    "fecha_negocio": "Día de Gold (hora local) al que aporta el registro; vacío si fue rechazado.",
+    "titulo": "Texto con el que se elige el registro en el dashboard «ETL paso a paso».",
+    "step": "Paso del ETL: 1 Extracción, 2 Bronze, 3 Validación, 4 Silver/Quarantine, 5 Gold.",
+    "orden": "Orden del dato dentro del paso.",
+    "dato": "Qué se muestra (ej. «Temperatura», «DQ07 · Humedad ambiental entre 0% y 100%»).",
+    "valor": "Valor del dato en ese paso (texto).",
+    "resultado": "Solo en validación: OK, WARNING o REJECT.",
 }
 
 DESCRIPTIONS = {**MEASUREMENTS, **GOLD}
@@ -91,19 +107,19 @@ def _datasets(settings, cfg) -> list[dict]:
     sets = [
         {"layer": "bronze", "entity": "open_meteo",
          "description": "Lecturas horarias de Open-Meteo Historical Weather API tal como llegaron (append-only, sin correcciones).",
-         "location": f"storage/bronze/{domain}/open_meteo/",
+         "location": f"storage/{settings.environment}/bronze/{domain}/open_meteo/",
          "load": lambda: lake.read_layer(base, "bronze", domain, "open_meteo")},
         {"layer": "bronze", "entity": "iot_simulator",
          "description": "Lecturas de las 6 estaciones IoT simuladas cada 15 minutos, con errores inyectados (append-only).",
-         "location": f"storage/bronze/{domain}/iot_simulator/",
+         "location": f"storage/{settings.environment}/bronze/{domain}/iot_simulator/",
          "load": lambda: lake.read_layer(base, "bronze", domain, "iot_simulator")},
         {"layer": "silver", "entity": entity,
          "description": "Mediciones tipadas y validadas con DQ01–DQ12: registros VALID y WARNING de ambas fuentes.",
-         "location": f"storage/silver/{domain}/{entity}/",
+         "location": f"storage/{settings.environment}/silver/{domain}/{entity}/",
          "load": lambda: lake.read_layer(base, "silver", domain, entity)},
         {"layer": "quarantine", "entity": entity,
          "description": "Registros rechazados (INVALID), sin modificar, con los motivos de rechazo.",
-         "location": f"storage/quarantine/{domain}/{entity}/",
+         "location": f"storage/{settings.environment}/quarantine/{domain}/{entity}/",
          "load": lambda: lake.read_layer(base, "quarantine", domain, entity)},
     ]
     engine = db.get_engine()
@@ -113,6 +129,11 @@ def _datasets(settings, cfg) -> list[dict]:
         "gold.dq_run_metrics": "Resumen de cada corrida del pipeline y su Data Quality Score.",
         "gold.dq_errors": "Registro de hallazgos de Data Quality (rechazos y warnings) por registro, regla y variable.",
         "etl.watermarks": "Control de carga incremental: fin de la última ventana extraída por fuente.",
+        "gold.pipeline_layer_metrics": "Qué hizo cada capa (bronze, silver, quarantine, gold) en cada lote: "
+                                       "registros, duración y ventana incremental.",
+        "gold.etl_trace": "Registros de muestra de cada lote (válidos, con warning y rechazados) para seguirlos "
+                          "paso a paso.",
+        "gold.etl_trace_steps": "Lo que le pasó a cada registro de muestra en cada uno de los 5 pasos del ETL.",
     }
     for table, desc in tables.items():
         schema, name = table.split(".")

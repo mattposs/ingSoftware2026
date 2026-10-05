@@ -5,7 +5,7 @@ layer: etl
 description: 'Control de carga incremental: fin de la última ventana extraída por
   fuente.'
 location: postgres:etl.watermarks
-last_cataloged_at: '2026-10-02T22:15:41.651297+00:00'
+last_cataloged_at: '2026-10-05T22:33:54.106305+00:00'
 columns:
 - name: domain
   data_type: str
@@ -23,18 +23,18 @@ columns:
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-09-27 23:00:00+00:00'
+  sample_value: '2026-09-30 23:00:00+00:00'
   description: Fin de la última ventana extraída de la fuente (UTC). La próxima corrida
     pide (watermark, ahora].
 - name: last_batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  sample_value: dbe6e15b-39eb-4e4b-9102-7e9909146eb7
   description: Corrida que movió el watermark por última vez.
 - name: updated_at
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-02 22:11:06.671164+00:00'
+  sample_value: '2026-10-05 22:29:01.669848+00:00'
   description: Última actualización del watermark.

@@ -4,14 +4,14 @@ entity: open_meteo
 layer: bronze
 description: Lecturas horarias de Open-Meteo Historical Weather API tal como llegaron
   (append-only, sin correcciones).
-location: storage/bronze/agro/open_meteo/
-last_cataloged_at: '2026-10-02T22:15:40.057332+00:00'
+location: storage/staging/bronze/agro/open_meteo/
+last_cataloged_at: '2026-10-05T22:33:52.606527+00:00'
 columns:
 - name: timestamp
   data_type: string
   nullable: false
   null_percentage: 0.0
-  sample_value: 2026-09-21T00:00
+  sample_value: 2026-09-28T00:00
   description: Fecha y hora de la medición. En Bronze es el texto crudo recibido;
     desde Silver, datetime UTC.
 - name: field_id
@@ -36,7 +36,7 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '12.8'
+  sample_value: '15.2'
   description: Temperatura del aire a 2 m, en °C.
 - name: temperature_unit
   data_type: string
@@ -49,7 +49,7 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '82.0'
+  sample_value: '85.0'
   description: Humedad relativa ambiental, en % (0 a 100).
 - name: humidity_unit
   data_type: string
@@ -61,7 +61,7 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '0.407'
+  sample_value: '0.484'
   description: Humedad volumétrica del suelo (0 a 7 cm), en m³/m³.
 - name: soil_moisture_unit
   data_type: string
@@ -87,7 +87,7 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '1.5'
+  sample_value: '12.9'
   description: Velocidad del viento a 10 m, en km/h.
 - name: wind_speed_unit
   data_type: string
@@ -114,13 +114,13 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  sample_value: dbe6e15b-39eb-4e4b-9102-7e9909146eb7
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: _ingested_at
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-02 22:11:06.638697+00:00'
+  sample_value: '2026-10-05 22:29:01.497132+00:00'
   description: Instante UTC en que el registro se capturó desde la fuente (linaje).
 - name: _source_system
   data_type: str

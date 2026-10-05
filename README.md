@@ -19,6 +19,8 @@
 - [Stack tecnológico](#stack-tecnológico)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Instalación y ejecución](#instalación-y-ejecución)
+- [Entornos: dev, staging y prod](#entornos-dev-staging-y-prod)
+- [Dashboards](#dashboards)
 - [Tests](#tests)
 - [CI/CD](#cicd)
 - [Catálogo y diccionario de datos](#catálogo-y-diccionario-de-datos)
@@ -138,7 +140,8 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 ├── config/
 │   ├── rules.yaml             # Reglas DQ01–DQ12 y umbrales
 │   ├── fields.yaml            # Campos del cliente (C01–C06)
-│   └── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas
+│   ├── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas (base de todos los entornos)
+│   └── environments/          # dev.yaml, staging.yaml, prod.yaml: lo que cambia en cada entorno
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
 ├── grafana/                   # Dashboard provisionado (fuente de datos + calidad-datos.json)
 ├── docs/
@@ -149,7 +152,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 │   ├── cambios_documento_v7.md
 │   └── kanban/                # Capturas semanales del tablero
 ├── notebooks/                 # Runners delgados por etapa: 01_bronze, 02_silver, 03_gold
-├── sql/                       # DDL de gold/etl y usuarios con permisos mínimos
+├── sql/                       # Crea agro_dev / agro_staging / agro_prod, esquema (schema/) y usuarios
 ├── src/
 │   ├── main.py                # Punto de entrada (python -m src.main)
 │   ├── pipeline.py            # Etapas run_bronze / run_silver / run_gold
@@ -186,9 +189,9 @@ cd IngSoftwareETL
 # 2. Configurar variables de entorno (completar las contraseñas)
 cp .env.example .env
 
-# 3. Levantar todo: PostgreSQL + pipeline programado (cada 15 min) + dashboard
+# 3. Levantar todo: PostgreSQL + pipeline programado en DEV, STAGING y PROD (cada 15 min) + dashboards
 docker compose up -d
-# Dashboard: http://localhost:3000 (se ve sin login; admin / GRAFANA_ADMIN_PASSWORD para editar)
+# Dashboards: http://localhost:3000 (se ven sin login; admin / GRAFANA_ADMIN_PASSWORD para editar)
 
 # 4. Instalar dependencias en un entorno virtual
 python -m venv .venv
@@ -205,6 +208,7 @@ pytest
 Otras formas de correrlo:
 
 ```bash
+python -m src.main --env staging              # elegir entorno: dev (defecto), staging o prod
 python -m src.main --source iot_simulator     # una sola fuente (no necesita internet)
 python -m src.main --reprocess <batch_id>     # regenerar Silver y Gold de un lote desde Bronze
 docker compose --profile run run --rm pipeline  # el pipeline completo dentro de Docker
@@ -216,9 +220,36 @@ Para correr las etapas por separado y explorar los datos están las notebooks de
 >
 > **Windows + OneDrive:** si la ruta del repo es muy larga, los archivos del lake pueden superar el límite de 260 caracteres. En ese caso, apuntar `STORAGE_PATH` a una ruta corta (ej. `C:\agro-storage`).
 
-## Dashboard
+## Entornos: dev, staging y prod
 
-Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con el dashboard *Calidad de datos agroclimáticos* ya cargado ([`grafana/dashboards/calidad-datos.json`](grafana/dashboards/calidad-datos.json)). Lee solo tablas de `gold`, con el usuario de solo lectura `dashboard`.
+El mismo código corre en tres entornos aislados. Cada uno tiene su propia base, su propio lake y su propio *scheduler*:
+
+| Entorno | Para qué | Base | Lake | Configuración |
+|---|---|---|---|---|
+| **DEV** | Probar código y reglas nuevas | `agro_dev` | `storage/dev/` | Solo simulador IoT, 20% de errores inyectados (para ejercitar todas las reglas) |
+| **STAGING** | Ensayo general antes de producción | `agro_staging` | `storage/staging/` | Igual que PROD (ambas fuentes), con datos propios |
+| **PROD** | Lo que consume el cliente | `agro_prod` | `storage/prod/` | Configuración base ([`config/pipeline.yaml`](config/pipeline.yaml)) |
+
+- Lo que cambia por entorno está en [`config/environments/`](config/environments/) y se superpone a `config/pipeline.yaml`. Las **reglas de calidad son las mismas** en los tres.
+- El entorno se elige con `APP_ENV` (o `--env`). Por defecto es **dev**, así nunca se escribe en producción por accidente.
+- En Grafana, el selector **Entorno** (arriba a la izquierda) cambia los tres dashboards entre DEV, STAGING y PROD.
+
+**Promoción con CI/CD** ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Siempre corre antes el CI completo:
+
+```mermaid
+flowchart LR
+    A[push a feature/*] -->|CI ok| D[imagen :dev]
+    B[merge a main] -->|CI ok| S[imagen :staging]
+    C[tag v1.0] -->|CI ok + aprobación manual| P[imagen :prod]
+```
+
+Las imágenes quedan en GitHub Container Registry (`ghcr.io/sebastianmb1/ingsoftwareetl:<entorno>`). Para que un entorno local use la imagen promovida: `PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod`.
+
+**Pendiente (configuración en GitHub):** en Settings → Environments, crear `dev`, `staging` y `prod`, y en `prod` activar *Required reviewers* para que la promoción a producción pida aprobación.
+
+## Dashboards
+
+Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con tres dashboards enlazados entre sí (botones arriba a la derecha) y el selector de **Entorno**. El primero es *Calidad de datos agroclimáticos* ([`grafana/dashboards/calidad-datos.json`](grafana/dashboards/calidad-datos.json)). Lee solo tablas de `gold`, con el usuario de solo lectura `dashboard`.
 
 | Sección | Qué muestra |
 |---|---|
@@ -235,7 +266,18 @@ Un segundo dashboard, **Flujo del ETL (Bronze · Silver · Gold)** ([`grafana/da
 | ¿Qué hace cada capa? | Dónde vive cada capa, qué pasa en ella y su regla principal |
 | Lote a lote | Cómo se reparte cada lote entre Silver y Quarantine, cuánto tarda cada etapa, las ventanas incrementales por fuente y el historial de lotes |
 
-Estos datos salen de `gold.pipeline_layer_metrics`, donde cada etapa registra cuántos registros procesó, cuánto tardó y qué ventana pidió a la fuente.
+El tercero, **ETL paso a paso** ([`grafana/dashboards/etl-paso-a-paso.json`](grafana/dashboards/etl-paso-a-paso.json)), sigue **un registro real** por las 5 etapas. Con el selector **Registro** se elige uno válido, uno con warning o uno rechazado de los últimos lotes:
+
+| Paso | Qué se ve |
+|---|---|
+| Camino del registro | Diagrama con las etapas que recorrió en color y las que no le tocaron en gris |
+| 1 · Extracción | Cómo llegó de la fuente: timestamp como texto y cada valor con su unidad |
+| 2 · Bronze | El archivo Parquet donde quedó y su linaje, sin ningún cambio |
+| 3 · Validación | Las 12 reglas con ✔ Cumple / ⚠ Warning / ✖ Rechaza y el detalle |
+| 4 · Silver o Quarantine | A dónde fue: tipado en Silver, o sin tocar y con el motivo en Quarantine |
+| 5 · Gold | El indicador diario al que aportó, o por qué nunca llegó |
+
+Las muestras salen de `gold.etl_trace` y `gold.etl_trace_steps` (unos pocos registros por lote, priorizando variedad). Las métricas por capa salen de `gold.pipeline_layer_metrics`, donde cada etapa registra cuántos registros procesó, cuánto tardó y qué ventana pidió a la fuente.
 
 Los filtros de arriba eligen la **fuente** (Open-Meteo o Simulador IoT) y los **campos**. El servicio `scheduler` corre el pipeline cada `PIPELINE_INTERVAL_SECONDS` (15 min por defecto), así que el tablero se actualiza solo.
 
@@ -246,7 +288,7 @@ Colores: un color fijo por campo (paleta validada para daltonismo) y verde / ama
 ```bash
 pytest                                   # unitarios (los de integración se saltean)
 pytest --cov=src --cov-report=term-missing
-TEST_DATABASE_URL=postgresql+psycopg://pipeline:<pass>@localhost:5432/agro pytest -m db   # integración
+TEST_DATABASE_URL=postgresql+psycopg://pipeline:<pass>@localhost:5432/agro_dev pytest -m db   # integración
 ```
 
 - `tests/test_rules.py`: al menos un test por regla DQ01–DQ12, con los bordes de cada rango.

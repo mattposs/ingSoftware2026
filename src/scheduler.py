@@ -14,12 +14,13 @@ from datetime import UTC, datetime
 
 from src import pipeline
 from src.common import db
+from src.config import get_settings
 
 
 def main() -> None:
     interval = int(os.getenv("PIPELINE_INTERVAL_SECONDS", "900"))
     engine = db.get_engine()
-    print(f"[SCHEDULER] Corrida cada {interval}s. Ctrl+C para detener.")
+    print(f"[SCHEDULER] Entorno {get_settings().environment.upper()} · corrida cada {interval}s.")
     while True:
         started = time.monotonic()
         print(f"[SCHEDULER] {datetime.now(UTC):%Y-%m-%d %H:%M:%S} UTC - inicio de corrida")

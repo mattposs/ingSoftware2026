@@ -1,6 +1,7 @@
 -- Esquema de PostgreSQL (documento v7, figura 3: modelo de datos).
 -- Bronze, Silver y Quarantine viven en el lake Parquet (storage/); acá solo Gold y control.
--- Se ejecuta automáticamente al crear el contenedor de PostgreSQL (docker-entrypoint-initdb.d).
+-- Lo aplica sql/00_entornos.sh en cada base (agro_dev, agro_staging, agro_prod) al crear el
+-- contenedor. Es idempotente: se puede volver a correr para agregar tablas nuevas.
 
 CREATE SCHEMA IF NOT EXISTS gold;
 CREATE SCHEMA IF NOT EXISTS etl;
@@ -83,6 +84,30 @@ CREATE TABLE IF NOT EXISTS gold.pipeline_layer_metrics (
     started_at    TIMESTAMPTZ,
     finished_at   TIMESTAMPTZ,
     PRIMARY KEY (_batch_id, layer, entity)
+);
+
+-- ETL paso a paso: por cada lote se guardan unos pocos registros de muestra (válidos, con
+-- warning y rechazados) con lo que les pasó en cada etapa, para mostrarlo en el dashboard.
+CREATE TABLE IF NOT EXISTS gold.etl_trace (
+    trace_id       TEXT PRIMARY KEY,           -- <lote>-<n>
+    _batch_id      TEXT        NOT NULL REFERENCES gold.dq_run_metrics (_batch_id) ON DELETE CASCADE,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    dq_status      TEXT        NOT NULL CHECK (dq_status IN ('VALID', 'WARNING', 'INVALID')),
+    source         TEXT,
+    field_id       TEXT,
+    measured_at    TIMESTAMPTZ,
+    fecha_negocio  DATE,                       -- día de Gold al que aporta (si llega a Gold)
+    titulo         TEXT        NOT NULL        -- texto para elegir el registro en el dashboard
+);
+
+CREATE TABLE IF NOT EXISTS gold.etl_trace_steps (
+    trace_id   TEXT    NOT NULL REFERENCES gold.etl_trace (trace_id) ON DELETE CASCADE,
+    step       INTEGER NOT NULL CHECK (step BETWEEN 1 AND 5),
+    orden      INTEGER NOT NULL,
+    dato       TEXT    NOT NULL,
+    valor      TEXT,
+    resultado  TEXT,                           -- OK / WARNING / REJECT (solo en validación)
+    PRIMARY KEY (trace_id, step, orden)
 );
 
 CREATE INDEX IF NOT EXISTS ix_dq_errors_batch ON gold.dq_errors (_batch_id);

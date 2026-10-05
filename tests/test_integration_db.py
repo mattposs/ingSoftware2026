@@ -68,6 +68,14 @@ def test_corrida_completa_con_simulador(engine):
     assert layers["bronze"] == layers["silver"] + layers["quarantine"] == run["total"]
     assert layers["gold"] > 0
 
+    # ETL paso a paso: hay trazas y las publicadas llegan hasta Gold (paso 5).
+    with engine.connect() as conn:
+        steps = pd.read_sql(text(
+            "SELECT t.dq_status, s.step FROM gold.etl_trace t JOIN gold.etl_trace_steps s USING (trace_id) "
+            "WHERE t._batch_id = :b"), conn, params={"b": batch})
+    assert "VALID" in set(steps["dq_status"]) and "INVALID" in set(steps["dq_status"])
+    assert 5 in set(steps.loc[steps["dq_status"] == "VALID", "step"])
+
     # Reprocesar el mismo lote deja la base igual (idempotencia).
     pipeline.reprocess(batch, engine)
     with engine.connect() as conn:

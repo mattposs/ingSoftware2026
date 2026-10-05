@@ -4,13 +4,13 @@ entity: daily_field_metrics
 layer: gold
 description: Indicadores diarios por campo y fuente. Única tabla que consume el dashboard.
 location: postgres:gold.daily_field_metrics
-last_cataloged_at: '2026-10-02T22:15:41.279311+00:00'
+last_cataloged_at: '2026-10-05T22:33:53.655680+00:00'
 columns:
 - name: fecha
   data_type: object
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-09-20'
+  sample_value: '2026-09-27'
   description: Día de las mediciones en hora local del negocio (America/Argentina/Buenos_Aires).
 - name: field_id
   data_type: str
@@ -28,7 +28,7 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '12.633'
+  sample_value: '15.333'
   description: Temperatura promedio del día, en °C, solo con registros VALID y WARNING.
 - name: precipitacion_total
   data_type: float64
@@ -40,13 +40,13 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '0.406'
+  sample_value: '0.478'
   description: Humedad del suelo promedio del día, en m³/m³.
 - name: humedad_ambiental_promedio
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '81.333'
+  sample_value: '85.667'
   description: Humedad relativa ambiental promedio del día, en %.
 - name: cantidad_mediciones
   data_type: int64
@@ -66,11 +66,11 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  sample_value: dbe6e15b-39eb-4e4b-9102-7e9909146eb7
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: _updated_at
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-02 22:11:09.451622+00:00'
+  sample_value: '2026-10-05 22:32:12.376737+00:00'
   description: Última vez que se recalculó la fila.

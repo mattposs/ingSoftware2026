@@ -3,6 +3,7 @@
   "title": "Flujo del ETL (Bronze · Silver · Gold)",
   "description": "Cómo recorre cada lote las capas del pipeline Medallion.",
   "tags": [
+    "agro",
     "dataops",
     "etl",
     "medallion"
@@ -19,16 +20,32 @@
   "version": 1,
   "links": [
     {
-      "title": "Calidad de datos",
-      "type": "link",
-      "url": "/d/agro-calidad",
-      "icon": "dashboard",
-      "targetBlank": false,
-      "keepTime": true
+      "type": "dashboards",
+      "tags": [
+        "agro"
+      ],
+      "asDropdown": false,
+      "includeVars": true,
+      "keepTime": true,
+      "title": "Dashboards"
     }
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "name": "entorno",
+        "label": "Entorno",
+        "type": "datasource",
+        "query": "grafana-postgresql-datasource",
+        "regex": "/^Agro · /",
+        "current": {
+          "text": "Agro · PROD",
+          "value": "agro-prod"
+        },
+        "refresh": 1,
+        "hide": 0
+      }
+    ]
   },
   "annotations": {
     "list": []
@@ -56,7 +73,7 @@
           "refId": "nodes",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -67,7 +84,7 @@
           "refId": "edges",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -159,7 +176,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -171,7 +188,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -212,7 +229,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -224,7 +241,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -265,7 +282,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -277,7 +294,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -318,7 +335,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -330,7 +347,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -371,7 +388,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -383,7 +400,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -425,7 +442,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -458,7 +475,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -484,7 +501,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -562,7 +579,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -575,7 +592,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -670,7 +687,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -682,7 +699,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -739,7 +756,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     },
     {
@@ -751,7 +768,7 @@
           "refId": "A",
           "datasource": {
             "type": "grafana-postgresql-datasource",
-            "uid": "agro-gold"
+            "uid": "${entorno}"
           },
           "rawQuery": true,
           "editorMode": "code",
@@ -880,7 +897,7 @@
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "agro-gold"
+        "uid": "${entorno}"
       }
     }
   ]

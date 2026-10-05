@@ -5,31 +5,31 @@ layer: gold
 description: Registro de hallazgos de Data Quality (rechazos y warnings) por registro,
   regla y variable.
 location: postgres:gold.dq_errors
-last_cataloged_at: '2026-10-02T22:15:41.533621+00:00'
+last_cataloged_at: '2026-10-05T22:33:53.962415+00:00'
 columns:
 - name: error_id
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '447'
+  sample_value: '158'
   description: Identificador del hallazgo.
 - name: _batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ca89ae95-c758-435c-86e9-82d67695c9e9
+  sample_value: 54097779-734c-48c0-adbf-61f4b283aa89
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: detected_at
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-02 22:11:08.849569+00:00'
+  sample_value: '2026-10-05 22:32:08.192404+00:00'
   description: Instante UTC en que se detectó el hallazgo.
 - name: measured_at
   data_type: datetime64[us, UTC]
   nullable: true
-  null_percentage: 3.41
-  sample_value: '2026-10-02 01:45:00+00:00'
+  null_percentage: 7.41
+  sample_value: '2026-10-05 22:30:00+00:00'
   description: Fecha y hora de la medición afectada (vacío si el timestamp era inválido).
 - name: source
   data_type: str
@@ -40,14 +40,14 @@ columns:
     cada 15 min).'
 - name: field_id
   data_type: str
-  nullable: true
-  null_percentage: 3.41
-  sample_value: C02
+  nullable: false
+  null_percentage: 0.0
+  sample_value: C04
   description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
 - name: variable
   data_type: str
   nullable: true
-  null_percentage: 14.2
+  null_percentage: 13.58
   sample_value: temperature
   description: Variable afectada (temperature, humidity, ...); vacío si la regla aplica
     al registro completo.
@@ -55,7 +55,7 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: DQ01
+  sample_value: DQ11
   description: Código de la regla incumplida (DQ01 a DQ12, ver config/rules.yaml).
 - name: rule_type
   data_type: str
@@ -68,17 +68,17 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: REJECT
+  sample_value: WARNING
   description: REJECT (el registro fue a quarantine) o WARNING (publicado y marcado).
 - name: severidad
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: Crítica
+  sample_value: Media
   description: 'Criticidad de la regla: Crítica, Alta o Media.'
 - name: detalle
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: timestamp nulo o vacío
+  sample_value: hueco de 30 min sin datos
   description: Explicación legible del hallazgo.

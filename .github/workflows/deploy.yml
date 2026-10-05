@@ -1,0 +1,61 @@
+# Promoción de la imagen del pipeline entre entornos (DataOps, EDT 7.3).
+#
+#   push a feature/**  -> imagen :dev      (entorno "dev")
+#   push / merge a main -> imagen :staging  (entorno "staging")
+#   tag v*  (ej. v1.0)  -> imagen :prod     (entorno "prod": requiere aprobación manual)
+#
+# Antes de publicar SIEMPRE corre el CI completo (lint, reglas, tests con PostgreSQL).
+# La imagen queda en GitHub Container Registry: ghcr.io/<dueño>/<repo>:<entorno>.
+# Cada entorno local la usa con: <ENTORNO>_IMAGE=ghcr.io/...:<entorno> docker compose up -d
+#
+# Configuración única en GitHub: Settings -> Environments -> crear "dev", "staging" y "prod";
+# en "prod" activar "Required reviewers" para que la promoción a producción pida aprobación.
+name: Promoción de entornos
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publicar:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || (github.ref == 'refs/heads/main' && 'staging' || 'dev') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Elegir entorno e imagen
+        id: meta
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then ENTORNO=prod
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then ENTORNO=staging
+          else ENTORNO=dev; fi
+          IMAGEN="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "entorno=$ENTORNO" >> "$GITHUB_OUTPUT"
+          echo "imagen=$IMAGEN" >> "$GITHUB_OUTPUT"
+          echo "### Promoción a **$ENTORNO**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Imagen: \`$IMAGEN:$ENTORNO\` (commit \`${GITHUB_SHA::7}\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Login en GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build y publicación
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "entorno=${{ steps.meta.outputs.entorno }}" \
+            -t "${{ steps.meta.outputs.imagen }}:${{ steps.meta.outputs.entorno }}" \
+            -t "${{ steps.meta.outputs.imagen }}:${{ github.sha }}" .
+          docker push "${{ steps.meta.outputs.imagen }}:${{ steps.meta.outputs.entorno }}"
+          docker push "${{ steps.meta.outputs.imagen }}:${{ github.sha }}"

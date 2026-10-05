@@ -17,7 +17,7 @@ from src.common import db, lake
 from src.common.state import WatermarkStore
 from src.config import get_settings, load_fields, load_pipeline, load_rules
 from src.ingestion import iot_simulator, open_meteo
-from src.metrics import quality
+from src.metrics import quality, trace
 from src.transformation import gold
 from src.validation.engine import ValidationResult, validate
 
@@ -52,7 +52,7 @@ def run_bronze(engine: Engine, batch_id: str | None = None, now: datetime | None
         if lake.write_parquet(df, settings.storage_path, "bronze", cfg["domain"], source, batch_id):
             wrote_any = True
         quality.record_layer(engine, batch_id, "bronze", source, len(df), started, datetime.now(UTC),
-                             location=f"storage/bronze/{cfg['domain']}/{source}/", window=win)
+                             location=f"storage/{settings.environment}/bronze/{cfg['domain']}/{source}/", window=win)
         # El watermark avanza al fin de la ventana una vez que el lote quedó en Bronze:
         # Silver y Gold se pueden reprocesar desde Bronze sin volver a llamar a la fuente.
         state.set(cfg["domain"], source, win[1], batch_id)
@@ -81,10 +81,13 @@ def run_silver(engine: Engine, batch_id: str, now: datetime | None = None) -> Va
     lake.write_parquet(result.quarantine, settings.storage_path, "quarantine", domain, entity, batch_id, replace=True)
     quality.start_run(engine, batch_id)  # asegura la fila de la corrida (también en reprocesos)
     quality.record_quality(engine, result, rules, batch_id)
+    traces, steps = trace.build_traces(batch, result.findings, rules, batch_id, cfg["business_timezone"],
+                                       settings.environment, domain, entity)
+    trace.save_traces(engine, batch_id, traces, steps)
     finished = datetime.now(UTC)
     for layer, df in (("silver", result.silver), ("quarantine", result.quarantine)):
         quality.record_layer(engine, batch_id, layer, entity, len(df), started, finished,
-                             location=f"storage/{layer}/{domain}/{entity}/")
+                             location=f"storage/{settings.environment}/{layer}/{domain}/{entity}/")
     return result
 
 
@@ -106,6 +109,7 @@ def run_gold(engine: Engine, batch_id: str) -> int:
         keys, tz, batch_id,
     )
     rows = db.upsert(metrics, engine, "gold", "daily_field_metrics", gold.GOLD_KEYS)
+    trace.add_gold_step(engine, batch_id, metrics)
     quality.record_layer(engine, batch_id, "gold", "daily_field_metrics", rows, started, datetime.now(UTC),
                          location="postgres:gold.daily_field_metrics")
     quality.finish_run(engine, batch_id, "ok")

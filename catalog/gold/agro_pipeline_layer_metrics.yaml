@@ -1,0 +1,64 @@
+dataset_name: agro_pipeline_layer_metrics_gold
+domain: agro
+entity: pipeline_layer_metrics
+layer: gold
+description: 'Qué hizo cada capa (bronze, silver, quarantine, gold) en cada lote:
+  registros, duración y ventana incremental.'
+location: postgres:gold.pipeline_layer_metrics
+last_cataloged_at: '2026-10-05T22:33:54.201548+00:00'
+columns:
+- name: _batch_id
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: dbe6e15b-39eb-4e4b-9102-7e9909146eb7
+  description: Identificador UUID de la corrida que generó el registro (linaje).
+- name: layer
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: bronze
+  description: 'Capa del pipeline: bronze, silver, quarantine o gold.'
+- name: entity
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: open_meteo
+  description: Fuente a la que corresponde el watermark.
+- name: rows
+  data_type: int64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '432'
+  description: Registros que la capa procesó en el lote.
+- name: location
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: storage/bronze/agro/open_meteo/
+  description: 'Dónde quedaron los datos: carpeta del lake o tabla de PostgreSQL.'
+- name: window_start
+  data_type: datetime64[us, UTC]
+  nullable: true
+  null_percentage: 66.67
+  sample_value: '2026-09-27 23:00:00+00:00'
+  description: 'Solo bronze: inicio (exclusivo) de la ventana incremental pedida a
+    la fuente.'
+- name: window_end
+  data_type: datetime64[us, UTC]
+  nullable: true
+  null_percentage: 66.67
+  sample_value: '2026-09-30 23:00:00+00:00'
+  description: 'Solo bronze: fin de la ventana incremental (el nuevo watermark).'
+- name: started_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-05 22:28:54.666047+00:00'
+  description: Inicio de la etapa (UTC).
+- name: finished_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-05 22:29:01.661555+00:00'
+  description: Fin de la etapa (UTC).
