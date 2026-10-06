@@ -234,18 +234,24 @@ El mismo código corre en tres entornos aislados. Cada uno tiene su propia base,
 - El entorno se elige con `APP_ENV` (o `--env`). Por defecto es **dev**, así nunca se escribe en producción por accidente.
 - En Grafana, el selector **Entorno** (arriba a la izquierda) cambia los tres dashboards entre DEV, STAGING y PROD.
 
-**Promoción con CI/CD** ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Siempre corre antes el CI completo:
+**Ramas y despliegue** ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Cada rama es un entorno, y los cambios avanzan por PR:
 
 ```mermaid
 flowchart LR
-    A[push a feature/*] -->|CI ok| D[imagen :dev]
-    B[merge a main] -->|CI ok| S[imagen :staging]
-    C[tag v1.0] -->|CI ok + aprobación manual| P[imagen :prod]
+    F[feature/*] -->|PR| D[dev]
+    D -->|PR| S[staging]
+    S -->|PR + revisión| M[main]
+    D -.->|push: CI + deploy| DE[development · APP_ENV=dev]
+    S -.->|push: CI + deploy| SE[staging · APP_ENV=staging]
+    M -.->|push: CI + aprobación + deploy| PE[production · APP_ENV=prod]
 ```
 
-Las imágenes quedan en GitHub Container Registry (`ghcr.io/sebastianmb1/ingsoftwareetl:<entorno>`). Para que un entorno local use la imagen promovida: `PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod`.
+Cada push a `dev`, `staging` o `main` corre el CI completo, publica la imagen `ghcr.io/sebastianmb1/ingsoftwareetl:<entorno>` y ejecuta el paso **Deploy**. Mientras no haya servidor (la POC corre local), ese paso solo informa la imagen publicada. Para que un entorno local use la imagen publicada: `PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod`.
 
-**Pendiente (configuración en GitHub):** en Settings → Environments, crear `dev`, `staging` y `prod`, y en `prod` activar *Required reviewers* para que la promoción a producción pida aprobación.
+**Configuración pendiente en GitHub** (Settings → Environments):
+- En `production`, activar *Required reviewers* para que el deploy a producción pida aprobación.
+- Cuando haya hosting, cargar en cada entorno los secrets `DEPLOY_HOST`, `DEPLOY_USER` y `DEPLOY_SSH_KEY`: el paso Deploy pasa a desplegar solo, por SSH, con `docker compose`.
+- En Settings → Branches, proteger `main` (y conviene también `staging`) con PR obligatorio y los checks del CI.
 
 ## Dashboards
 

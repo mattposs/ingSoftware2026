@@ -1,61 +1,95 @@
-# Promoción de la imagen del pipeline entre entornos (DataOps, EDT 7.3).
+# Despliegue por entornos (DataOps, EDT 7.3). Cada rama es un entorno:
 #
-#   push a feature/**  -> imagen :dev      (entorno "dev")
-#   push / merge a main -> imagen :staging  (entorno "staging")
-#   tag v*  (ej. v1.0)  -> imagen :prod     (entorno "prod": requiere aprobación manual)
+#   rama dev     -> entorno GitHub "development" -> APP_ENV=dev     -> imagen :dev
+#   rama staging -> entorno GitHub "staging"     -> APP_ENV=staging -> imagen :staging
+#   rama main    -> entorno GitHub "production"  -> APP_ENV=prod    -> imagen :prod
 #
-# Antes de publicar SIEMPRE corre el CI completo (lint, reglas, tests con PostgreSQL).
-# La imagen queda en GitHub Container Registry: ghcr.io/<dueño>/<repo>:<entorno>.
-# Cada entorno local la usa con: <ENTORNO>_IMAGE=ghcr.io/...:<entorno> docker compose up -d
+# Flujo de promoción: feature/* --PR--> dev --PR--> staging --PR--> main
+# Antes de desplegar SIEMPRE corre el CI completo (lint, reglas, tests con PostgreSQL).
 #
-# Configuración única en GitHub: Settings -> Environments -> crear "dev", "staging" y "prod";
-# en "prod" activar "Required reviewers" para que la promoción a producción pida aprobación.
-name: Promoción de entornos
+# Configuración única en GitHub (Settings -> Environments):
+#   - "production": activar "Required reviewers" para que el deploy a prod pida aprobación.
+#   - En cada entorno, cargar los secrets de hosting cuando exista un servidor:
+#       DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY  (ver el paso "Deploy" al final).
+name: Deploy
 
 on:
   push:
-    branches: [main, "feature/**"]
-    tags: ["v*"]
+    branches: [dev, staging, main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
+  # 1. Dependencias + pruebas: reutiliza el CI completo (.github/workflows/ci.yml).
   ci:
     uses: ./.github/workflows/ci.yml
 
-  publicar:
+  # 2. Imagen y despliegue en el entorno que corresponde a la rama.
+  deploy:
     needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || (github.ref == 'refs/heads/main' && 'staging' || 'dev') }}
+    environment: ${{ github.ref_name == 'main' && 'production' || (github.ref_name == 'staging' && 'staging' || 'development') }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Elegir entorno e imagen
-        id: meta
+      - name: Mapear rama -> entorno
+        id: env
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then ENTORNO=prod
-          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then ENTORNO=staging
-          else ENTORNO=dev; fi
+          case "$GITHUB_REF_NAME" in
+            main)    APP_ENV=prod ;;
+            staging) APP_ENV=staging ;;
+            dev)     APP_ENV=dev ;;
+            *) echo "Rama no desplegable: $GITHUB_REF_NAME"; exit 1 ;;
+          esac
           IMAGEN="ghcr.io/${GITHUB_REPOSITORY,,}"
-          echo "entorno=$ENTORNO" >> "$GITHUB_OUTPUT"
+          echo "app_env=$APP_ENV" >> "$GITHUB_OUTPUT"
           echo "imagen=$IMAGEN" >> "$GITHUB_OUTPUT"
-          echo "### Promoción a **$ENTORNO**" >> "$GITHUB_STEP_SUMMARY"
-          echo "Imagen: \`$IMAGEN:$ENTORNO\` (commit \`${GITHUB_SHA::7}\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Deploy de \`$GITHUB_REF_NAME\` → entorno **$APP_ENV**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Imagen: \`$IMAGEN:$APP_ENV\` · commit \`${GITHUB_SHA::7}\`" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Login en GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Build y publicación
+      - name: Instalar dependencias y probar la configuración del entorno
         run: |
+          pip install -r requirements.txt
+          APP_ENV=${{ steps.env.outputs.app_env }} python -c "from src.config import load_pipeline; c = load_pipeline(); print('Entorno', c['environment'], '· fuentes:', [s for s, v in c['sources'].items() if v.get('enabled', True)])"
+          python -m src.validation.check_rules
+
+      - name: Build y publicación de la imagen (GitHub Container Registry)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker build \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "entorno=${{ steps.meta.outputs.entorno }}" \
-            -t "${{ steps.meta.outputs.imagen }}:${{ steps.meta.outputs.entorno }}" \
-            -t "${{ steps.meta.outputs.imagen }}:${{ github.sha }}" .
-          docker push "${{ steps.meta.outputs.imagen }}:${{ steps.meta.outputs.entorno }}"
-          docker push "${{ steps.meta.outputs.imagen }}:${{ github.sha }}"
+            -t "${{ steps.env.outputs.imagen }}:${{ steps.env.outputs.app_env }}" \
+            -t "${{ steps.env.outputs.imagen }}:${{ github.sha }}" .
+          docker push "${{ steps.env.outputs.imagen }}:${{ steps.env.outputs.app_env }}"
+          docker push "${{ steps.env.outputs.imagen }}:${{ github.sha }}"
+
+      # 3. DEPLOY (placeholder). Mientras no haya servidor (la POC corre local, documento sección 8),
+      #    este paso solo informa. Cuando exista, cargar los secrets del entorno y queda activo.
+      - name: Deploy
+        env:
+          APP_ENV: ${{ steps.env.outputs.app_env }}
+          IMAGEN: ${{ steps.env.outputs.imagen }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::notice title=Deploy omitido::No hay secrets de hosting en el entorno '$APP_ENV'. Imagen publicada: $IMAGEN:$APP_ENV"
+            exit 0
+          fi
+          # ---- PLANTILLA DE DEPLOY (servidor con Docker + este repo clonado en ~/agro) ----
+          mkdir -p ~/.ssh && echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd ~/agro && git pull --ff-only && \
+             export ${APP_ENV^^}_IMAGE=$IMAGEN:$APP_ENV && \
+             docker compose pull scheduler-$APP_ENV && \
+             docker compose up -d scheduler-$APP_ENV grafana"
