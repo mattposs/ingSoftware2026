@@ -334,10 +334,10 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 
 | Integrante | Rol |
 |---|---|
-| <!-- TODO --> | Project Manager |
-| <!-- TODO --> | Data Engineer |
-| <!-- TODO --> | QA / Data Quality |
-| <!-- TODO --> | DevOps / CI-CD |
+| Kiara Pisera | Project Manager |
+| Sebastian Martinez Benega | Data Engineer |
+| Joaquin Maver | QA / Data Quality |
+| Matias Posse Presa | DevOps / CI-CD |
 
 **Materia:** Ingeniería de Software – UADE · **Docente:** <!-- TODO --> · **Entrega final:** 10 de noviembre de 2026
 
