@@ -1,0 +1,852 @@
+{
+  "uid": "agro-paso-a-paso",
+  "title": "ETL paso a paso",
+  "description": "Un registro real recorriendo las 5 etapas del pipeline: extracción, Bronze, validación, Silver/Quarantine y Gold.",
+  "tags": [
+    "agro",
+    "dataops",
+    "etl"
+  ],
+  "timezone": "browser",
+  "refresh": "",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "agro"
+      ],
+      "asDropdown": false,
+      "includeVars": true,
+      "keepTime": true,
+      "title": "Dashboards"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "entorno",
+        "label": "Entorno",
+        "type": "datasource",
+        "query": "grafana-postgresql-datasource",
+        "regex": "/^Agro · /",
+        "current": {
+          "text": "Agro · PROD",
+          "value": "agro-prod"
+        },
+        "refresh": 1,
+        "hide": 0
+      },
+      {
+        "name": "registro",
+        "label": "Registro",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "${entorno}"
+        },
+        "query": "SELECT titulo AS __text, trace_id AS __value FROM gold.etl_trace ORDER BY created_at DESC, CASE dq_status WHEN 'VALID' THEN 1 WHEN 'WARNING' THEN 2 ELSE 3 END, trace_id LIMIT 60",
+        "definition": "Muestras de los últimos lotes",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "sort": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "El camino de este registro",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "nodeGraph",
+      "title": "¿Por dónde pasó el registro elegido?",
+      "description": "Las etapas en color son las que recorrió el registro elegido arriba (selector «Registro»); las grises son las que no le tocaron.",
+      "targets": [
+        {
+          "refId": "nodes",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 'fuente' AS id, '1 · EXTRACCIÓN' AS title, 'fuente' AS subtitle, (t.source) AS secondarystat, ('#898781') AS color FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t UNION ALL SELECT 'bronze' AS id, '2 · BRONZE' AS title, 'Parquet · crudo' AS subtitle, ('guardado') AS secondarystat, ('#d95926') AS color FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t UNION ALL SELECT 'reglas' AS id, '3 · VALIDACIÓN' AS title, 'reglas DQ01–DQ12' AS subtitle, (CASE t.dq_status WHEN 'VALID' THEN '✔ cumple' WHEN 'WARNING' THEN '⚠ warning' ELSE '✖ rechaza' END) AS secondarystat, ('#898781') AS color FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t UNION ALL SELECT 'silver' AS id, '4 · SILVER' AS title, 'Parquet · validado' AS subtitle, (CASE WHEN t.dq_status = 'INVALID' THEN 'no pasa' ELSE '✔ llega' END) AS secondarystat, (CASE WHEN t.dq_status = 'INVALID' THEN '#3a3d42' ELSE '#3987e5' END) AS color FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t UNION ALL SELECT 'quarantine' AS id, '4 · QUARANTINE' AS title, 'Parquet · rechazados' AS subtitle, (CASE WHEN t.dq_status = 'INVALID' THEN '✖ queda' ELSE 'no pasa' END) AS secondarystat, (CASE WHEN t.dq_status = 'INVALID' THEN '#d03b3b' ELSE '#3a3d42' END) AS color FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t UNION ALL SELECT 'gold' AS id, '5 · GOLD' AS title, 'PostgreSQL · indicadores' AS subtitle, (CASE WHEN t.dq_status = 'INVALID' THEN 'no llega' ELSE '✔ aporta' END) AS secondarystat, (CASE WHEN t.dq_status = 'INVALID' THEN '#3a3d42' ELSE '#c98500' END) AS color FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t"
+        },
+        {
+          "refId": "edges",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 'e1' AS id, 'fuente' AS source, 'bronze' AS target UNION ALL SELECT 'e2' AS id, 'bronze' AS source, 'reglas' AS target UNION ALL SELECT 'e3' AS id, 'reglas' AS source, 'silver' AS target UNION ALL SELECT 'e4' AS id, 'reglas' AS source, 'quarantine' AS target UNION ALL SELECT 'e5' AS id, 'silver' AS source, 'gold' AS target"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "layoutAlgorithm": "layered",
+        "zoomMode": "cooperative",
+        "nodes": {},
+        "edges": {}
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Resultado",
+      "description": "VALID = sin hallazgos · WARNING = publicado pero marcado · INVALID = rechazado",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT dq_status FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "VALID": {
+                  "text": "✔ VALID",
+                  "color": "#0ca30c",
+                  "index": 0
+                },
+                "WARNING": {
+                  "text": "⚠ WARNING",
+                  "color": "#fab219",
+                  "index": 1
+                },
+                "INVALID": {
+                  "text": "✖ INVALID",
+                  "color": "#d03b3b",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "noValue": "elegí un registro"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fuente",
+      "description": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT source FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "noValue": "elegí un registro"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 6,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Campo",
+      "description": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT coalesce(t.field_id || ' · ' || f.nombre, coalesce(t.field_id, '(sin campo)')) FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t LEFT JOIN gold.fields f USING (field_id)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "noValue": "elegí un registro"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Momento de la medición",
+      "description": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT coalesce(to_char(measured_at AT TIME ZONE 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY HH24:MI'), '(timestamp inválido)') FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "noValue": "elegí un registro"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 18,
+        "y": 11,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "🔌 Paso 1 · Extracción",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "El conector le pide a la fuente **solo la ventana nueva** (desde el último *watermark*).\n\nAsí llega el dato: el `timestamp` todavía es **texto** y cada valor trae **su unidad**. Todavía no se corrige nada."
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 7,
+        "h": 11
+      }
+    },
+    {
+      "type": "table",
+      "title": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT dato AS \"Dato\", coalesce(valor, '—') AS \"Valor\" FROM gold.etl_trace_steps WHERE trace_id = '$registro' AND step = 1 ORDER BY orden"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "Este paso se completa cuando el lote termina de cargar Gold"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dato"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 330
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 9,
+      "gridPos": {
+        "x": 7,
+        "y": 16,
+        "w": 17,
+        "h": 11
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "🟠 Paso 2 · Bronze (crudo)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Se guarda **tal cual** en un archivo Parquet, agregando **linaje**: de qué lote, cuándo y de qué conector vino.\n\nBronze **nunca se modifica**: si mañana cambia una regla, se reprocesa desde acá sin volver a llamar a la API."
+      },
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 7,
+        "h": 7
+      }
+    },
+    {
+      "type": "table",
+      "title": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT dato AS \"Dato\", coalesce(valor, '—') AS \"Valor\" FROM gold.etl_trace_steps WHERE trace_id = '$registro' AND step = 2 ORDER BY orden"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "Este paso se completa cuando el lote termina de cargar Gold"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dato"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 330
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 12,
+      "gridPos": {
+        "x": 7,
+        "y": 28,
+        "w": 17,
+        "h": 7
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "⚙️ Paso 3 · Validación (reglas DQ01–DQ12)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Se evalúan las **12 reglas** de `config/rules.yaml`.\n\n- ✖ **Rechaza**: regla crítica incumplida → el registro va a **Quarantine**.\n- ⚠ **Warning**: se publica igual, pero **marcado** para revisión.\n- ✔ **Cumple**: sin problemas.\n\nCada hallazgo queda registrado en `gold.dq_errors`."
+      },
+      "id": 14,
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 7,
+        "h": 13
+      }
+    },
+    {
+      "type": "table",
+      "title": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT resultado AS \"Resultado\", dato AS \"Dato\", coalesce(valor, '—') AS \"Valor\" FROM gold.etl_trace_steps WHERE trace_id = '$registro' AND step = 3 ORDER BY orden"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "Este paso se completa cuando el lote termina de cargar Gold"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dato"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 330
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Resultado"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "OK": {
+                        "text": "✔ Cumple",
+                        "color": "#0ca30c",
+                        "index": 0
+                      },
+                      "WARNING": {
+                        "text": "⚠ Warning",
+                        "color": "#fab219",
+                        "index": 1
+                      },
+                      "REJECT": {
+                        "text": "✖ Rechaza",
+                        "color": "#d03b3b",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 15,
+      "gridPos": {
+        "x": 7,
+        "y": 36,
+        "w": 17,
+        "h": 13
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "🔵 Paso 4 · Silver o Quarantine",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "**Silver** guarda los registros utilizables ya **tipados** (timestamp en UTC, números).\n\n**Quarantine** guarda los rechazados **sin tocar** y con el **motivo**, para poder auditarlos. Nada se pierde."
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 7,
+        "h": 12
+      }
+    },
+    {
+      "type": "table",
+      "title": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT dato AS \"Dato\", coalesce(valor, '—') AS \"Valor\" FROM gold.etl_trace_steps WHERE trace_id = '$registro' AND step = 4 ORDER BY orden"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "Este paso se completa cuando el lote termina de cargar Gold"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dato"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 330
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 18,
+      "gridPos": {
+        "x": 7,
+        "y": 50,
+        "w": 17,
+        "h": 12
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "🟡 Paso 5 · Gold (indicadores)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 62,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "options": {
+        "mode": "markdown",
+        "content": "Gold **recalcula el indicador diario** del campo y la fuente con **todos** los registros válidos de ese día, y lo carga en PostgreSQL con *upsert*.\n\nEs **lo único que ven los dashboards**. Un registro rechazado nunca llega hasta acá."
+      },
+      "id": 20,
+      "gridPos": {
+        "x": 0,
+        "y": 63,
+        "w": 7,
+        "h": 10
+      }
+    },
+    {
+      "type": "table",
+      "title": "",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT dato AS \"Dato\", coalesce(valor, '—') AS \"Valor\" FROM gold.etl_trace_steps WHERE trace_id = '$registro' AND step = 5 ORDER BY orden"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "noValue": "Este paso se completa cuando el lote termina de cargar Gold"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dato"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 330
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 21,
+      "gridPos": {
+        "x": 7,
+        "y": 63,
+        "w": 17,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    }
+  ]
+}

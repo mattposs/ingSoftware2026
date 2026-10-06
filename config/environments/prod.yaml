@@ -1,0 +1,3 @@
+# PROD: producción. Usa la configuración base de config/pipeline.yaml sin cambios.
+# Es lo que consumen los usuarios del cliente; solo recibe versiones ya validadas en STAGING.
+{}

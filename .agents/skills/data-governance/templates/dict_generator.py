@@ -5,7 +5,19 @@ los archivos de catálogo YAML.
 """
 
 import os
+
 import yaml
+
+
+def _cell(value) -> str:
+    """Texto seguro para una celda de tabla Markdown (sin pipes ni saltos de línea)."""
+    return " ".join(str(value).split()).replace("|", "\\|")
+
+
+def _code(value) -> str:
+    """Valor en formato código; usa doble backtick si el valor contiene backticks."""
+    text = _cell(value)
+    return f"`` {text} ``" if "`" in text else f"`{text}`"
 
 
 def generate_data_dictionary_md(catalog_yaml_path: str, output_docs_dir: str = "docs/data_dictionary") -> str:
@@ -13,7 +25,7 @@ def generate_data_dictionary_md(catalog_yaml_path: str, output_docs_dir: str = "
     Lee un archivo YAML de catálogo y produce un archivo Markdown con formato
     de tabla limpia y profesional para documentación del proyecto.
     """
-    with open(catalog_yaml_path, "r", encoding="utf-8") as f:
+    with open(catalog_yaml_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
 
     dataset_name = data.get("dataset_name", "Dataset")
@@ -33,22 +45,23 @@ def generate_data_dictionary_md(catalog_yaml_path: str, output_docs_dir: str = "
         f"**Ubicación / Destino:** `{location}`  ",
         f"**Última Catalogación:** `{last_cataloged}`  ",
         "",
-        f"> {description}",
+        f"> {_cell(description)}",
         "",
         "## Definición de Columnas",
         "",
-        "| Columna | Tipo de Dato | Nullable | Ejemplo | Descripción |",
+        "| Columna | Tipo de Dato | Nulos observados | Ejemplo | Descripción |",
         "|---|---|---|---|---|"
     ]
 
     for col in columns:
-        nullable_str = "Sí" if col.get("nullable") else "No"
-        sample = col.get("sample_value") or "-"
-        sample = str(sample).replace("|", "\\|")
-        desc = str(col.get("description", "-")).replace("|", "\\|")
+        pct = col.get("null_percentage")
+        nullable_str = ("Sí" if col.get("nullable") else "No") + (f" ({pct}%)" if pct else "")
+        sample = col.get("sample_value")
+        sample_str = _code(sample) if sample not in (None, "") else "-"
+        desc = _cell(col.get("description") or "-")
 
         lines.append(
-            f"| `{col.get('name')}` | `{col.get('data_type')}` | {nullable_str} | `{sample}` | {desc} |"
+            f"| `{col.get('name')}` | `{col.get('data_type')}` | {nullable_str} | {sample_str} | {desc} |"
         )
 
     md_content = "\n".join(lines) + "\n"

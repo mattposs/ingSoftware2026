@@ -1,0 +1,21 @@
+# Parámetros operativos del pipeline (no son reglas de calidad).
+domain: agro
+entity: measurements                  # entidad unificada de Silver / Quarantine
+storage_path: storage                 # raíz del lake Parquet (ignorada por Git)
+business_timezone: America/Argentina/Buenos_Aires   # para la "fecha" de Gold (D6)
+
+sources:
+  open_meteo:
+    enabled: true
+    base_url: https://archive-api.open-meteo.com/v1/archive
+    lag_days: 5            # la API histórica publica con ~5 días de retraso
+    initial_days: 7        # ventana de la primera corrida (sin watermark)
+    timeout_seconds: 30
+    retries: 3
+  iot_simulator:
+    enabled: true
+    frequency_minutes: 15
+    initial_hours: 24      # ventana de la primera corrida (sin watermark)
+    max_hours_per_run: 48  # tope para no generar semanas de datos de golpe
+    error_rate: 0.08       # ~8% de registros con errores (documento, sección 2.2)
+    seed: null             # entero para corridas reproducibles

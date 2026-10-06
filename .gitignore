@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- Pipeline DataOps (proyecto) ----
+# Lake Parquet generado por el pipeline (Bronze / Silver / Quarantine)
+storage/
+*.parquet
+# Archivos de Office temporales
+~$*

@@ -1,0 +1,9 @@
+# DEV: entorno de desarrollo. Se prueba código y reglas nuevas sin depender de internet.
+# Solo el simulador IoT y con MÁS errores inyectados, para ejercitar todas las reglas.
+# Pisa los valores de config/pipeline.yaml.
+sources:
+  open_meteo:
+    enabled: false
+  iot_simulator:
+    initial_hours: 6
+    error_rate: 0.20

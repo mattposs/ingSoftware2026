@@ -1,0 +1,80 @@
+# Reglas de Data Quality (documento de proyecto v7, sección 6.2).
+# Los umbrales se versionan acá: cambiar un rango NO requiere tocar código (RNF06).
+# Rangos iniciales para la zona pampeana, a validar en el taller con agrónomos (S2).
+version: 1
+
+rules:
+  DQ01:
+    nombre: timestamp obligatorio
+    tipo: Completitud
+    severidad: Crítica
+  DQ02:
+    nombre: field_id obligatorio
+    tipo: Completitud
+    severidad: Crítica
+  DQ03:
+    nombre: Timestamp con formato válido
+    tipo: Consistencia
+    severidad: Crítica
+    min_timestamp: "2000-01-01T00:00:00Z"
+    future_tolerance_minutes: 10
+  DQ04:
+    nombre: La medición pertenece a un campo existente
+    tipo: Integridad
+    severidad: Crítica
+    # Los campos válidos salen de config/fields.yaml (se sincronizan a gold.fields).
+  DQ05:
+    nombre: Sin registros duplicados
+    tipo: Unicidad
+    severidad: Crítica
+    key: [source, field_id, timestamp]   # se conserva el primero
+  DQ06:
+    nombre: Unidades esperadas
+    tipo: Consistencia
+    severidad: Crítica
+    expected_units:
+      temperature: "°C"
+      humidity: "%"
+      soil_moisture: "m³/m³"
+      precipitation: "mm"
+      wind_speed: "km/h"
+  DQ07:
+    nombre: Humedad ambiental entre 0% y 100%
+    tipo: Validez
+    severidad: Alta
+    min: 0
+    max: 100
+  DQ08:
+    nombre: Precipitación >= 0
+    tipo: Validez
+    severidad: Alta
+    min: 0
+  DQ09:
+    nombre: Temperatura dentro de rango
+    tipo: Validez
+    severidad: Alta
+    reject: {min: -40, max: 60}
+    warning: {min: -15, max: 45}
+  DQ10:
+    nombre: Humedad del suelo dentro de rango
+    tipo: Validez
+    severidad: Alta
+    reject: {min: 0, max: 1}
+    warning: {min: 0.02, max: 0.60}
+  DQ11:
+    nombre: Sin períodos inesperados sin datos
+    tipo: Completitud
+    severidad: Media
+    # Hueco = diferencia entre dos lecturas consecutivas (no nulas) del mismo
+    # campo, fuente y variable. Ver docs/decisiones.md (D1).
+    min_gap_minutes:
+      iot_simulator: 30   # lecturas cada 15 min
+      open_meteo: 120     # Open-Meteo Historical es horario
+  DQ12:
+    nombre: Sin cambios anormales entre mediciones consecutivas
+    tipo: Anomalía
+    severidad: Media
+    max_change_per_hour:
+      temperature: 8
+      humidity: 40
+      soil_moisture: 0.15

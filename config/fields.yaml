@@ -1,0 +1,10 @@
+# Campos del cliente (Agropecuaria Los Tres Ombúes S.A., organización ficticia).
+# Fuente de verdad para DQ04 y para la tabla gold.fields (se sincroniza en cada corrida).
+# Coordenadas aproximadas en la zona núcleo pampeana.
+fields:
+  - {field_id: C01, nombre: La Aurora,     provincia: Buenos Aires, latitude: -34.05, longitude: -60.55, hectareas: 3200}
+  - {field_id: C02, nombre: El Ombú,       provincia: Buenos Aires, latitude: -33.72, longitude: -61.10, hectareas: 2800}
+  - {field_id: C03, nombre: San Isidro,    provincia: Santa Fe,     latitude: -33.10, longitude: -61.30, hectareas: 3100}
+  - {field_id: C04, nombre: Las Acacias,   provincia: Santa Fe,     latitude: -32.60, longitude: -61.90, hectareas: 2900}
+  - {field_id: C05, nombre: La Esperanza,  provincia: Córdoba,      latitude: -32.70, longitude: -62.60, hectareas: 3000}
+  - {field_id: C06, nombre: Don Tomás,     provincia: Córdoba,      latitude: -33.30, longitude: -62.80, hectareas: 3000}

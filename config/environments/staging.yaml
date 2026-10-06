@@ -1,0 +1,7 @@
+# STAGING: ensayo general antes de producción. Misma configuración que PROD
+# (ambas fuentes, misma tasa de errores) pero con su propia base y su propio lake,
+# así una versión nueva se valida con datos reales sin tocar producción.
+# Pisa los valores de config/pipeline.yaml.
+sources:
+  open_meteo:
+    initial_days: 3

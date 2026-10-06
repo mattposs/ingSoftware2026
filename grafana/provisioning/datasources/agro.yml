@@ -1,0 +1,40 @@
+# Una fuente de datos por entorno: PostgreSQL con el usuario de SOLO LECTURA sobre gold.*
+# (RNF04: el dashboard consume únicamente datos validados; RNF07: credenciales desde .env).
+# Los dashboards eligen el entorno con el selector "Entorno".
+apiVersion: 1
+
+deleteDatasources:
+  - name: Agro Gold   # fuente única anterior a los entornos
+    orgId: 1
+
+datasources:
+  - name: Agro · PROD
+    uid: agro-prod
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: ${DASHBOARD_DB_USER}
+    isDefault: true
+    editable: false
+    jsonData: {database: agro_prod, sslmode: disable, postgresVersion: 1600, timescaledb: false}
+    secureJsonData: {password: "${DASHBOARD_DB_PASSWORD}"}
+
+  - name: Agro · STAGING
+    uid: agro-staging
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: ${DASHBOARD_DB_USER}
+    editable: false
+    jsonData: {database: agro_staging, sslmode: disable, postgresVersion: 1600, timescaledb: false}
+    secureJsonData: {password: "${DASHBOARD_DB_PASSWORD}"}
+
+  - name: Agro · DEV
+    uid: agro-dev
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: ${DASHBOARD_DB_USER}
+    editable: false
+    jsonData: {database: agro_dev, sslmode: disable, postgresVersion: 1600, timescaledb: false}
+    secureJsonData: {password: "${DASHBOARD_DB_PASSWORD}"}

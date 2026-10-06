@@ -1,0 +1,904 @@
+{
+  "uid": "agro-flujo",
+  "title": "Flujo del ETL (Bronze · Silver · Gold)",
+  "description": "Cómo recorre cada lote las capas del pipeline Medallion.",
+  "tags": [
+    "agro",
+    "dataops",
+    "etl",
+    "medallion"
+  ],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "graphTooltip": 1,
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "links": [
+    {
+      "type": "dashboards",
+      "tags": [
+        "agro"
+      ],
+      "asDropdown": false,
+      "includeVars": true,
+      "keepTime": true,
+      "title": "Dashboards"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "entorno",
+        "label": "Entorno",
+        "type": "datasource",
+        "query": "grafana-postgresql-datasource",
+        "regex": "/^Agro · /",
+        "current": {
+          "text": "Agro · PROD",
+          "value": "agro-prod"
+        },
+        "refresh": 1,
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Recorrido de los datos por las capas",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "nodeGraph",
+      "title": "Flujo Medallion: recorrido de los datos en el período",
+      "description": "Cada caja es una etapa del ETL con la cantidad de registros que pasaron por ella en el período elegido (arriba a la derecha). Pasá el mouse por una caja para ver dónde vive y qué hace.",
+      "targets": [
+        {
+          "refId": "nodes",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 'om' AS id, 'Open-Meteo' AS title, 'Fuente · API horaria' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze' AND entity = 'open_meteo'), 'FM999G999G990') AS secondarystat, 'extraídos' AS detail__registros, '#898781' AS color, 'archive-api.open-meteo.com' AS detail__ubicacion, 'Datos meteorológicos reales de los 6 campos' AS detail__que_hace UNION ALL SELECT 'iot' AS id, 'Simulador IoT' AS title, 'Fuente · cada 15 min' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze' AND entity = 'iot_simulator'), 'FM999G999G990') AS secondarystat, 'extraídos' AS detail__registros, '#898781' AS color, 'src/ingestion/iot_simulator.py' AS detail__ubicacion, 'Estaciones simuladas con ~8% de errores inyectados' AS detail__que_hace UNION ALL SELECT 'bronze' AS id, 'BRONZE' AS title, 'Parquet · crudo' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze'), 'FM999G999G990') AS secondarystat, 'guardados' AS detail__registros, '#d95926' AS color, 'storage/bronze/' AS detail__ubicacion, 'Guarda el lote tal como llegó + linaje. Nunca se modifica' AS detail__que_hace UNION ALL SELECT 'reglas' AS id, 'Reglas DQ01–DQ12' AS title, 'Validación' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze'), 'FM999G999G990') AS secondarystat, 'evaluados' AS detail__registros, '#898781' AS color, 'config/rules.yaml' AS detail__ubicacion, 'Tipa, deduplica y clasifica en VALID / WARNING / INVALID' AS detail__que_hace UNION ALL SELECT 'silver' AS id, 'SILVER' AS title, 'Parquet · validado' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'silver'), 'FM999G999G990') AS secondarystat, 'válidos' AS detail__registros, '#3987e5' AS color, 'storage/silver/' AS detail__ubicacion, 'Registros utilizables, tipados, con sus warnings' AS detail__que_hace UNION ALL SELECT 'quarantine' AS id, 'QUARANTINE' AS title, 'Parquet · rechazados' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'quarantine'), 'FM999G999G990') AS secondarystat, 'rechazados' AS detail__registros, '#d03b3b' AS color, 'storage/quarantine/' AS detail__ubicacion, 'Registros rechazados sin modificar + motivo de rechazo' AS detail__que_hace UNION ALL SELECT 'errores' AS id, 'gold.dq_errors' AS title, 'PostgreSQL · hallazgos' AS subtitle, to_char((SELECT count(*)::int FROM gold.dq_errors WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start))), 'FM999G999G990') AS secondarystat, 'hallazgos' AS detail__registros, '#c98500' AS color, 'postgres: gold.dq_errors' AS detail__ubicacion, 'Cada regla incumplida, con variable y severidad' AS detail__que_hace UNION ALL SELECT 'gold' AS id, 'GOLD' AS title, 'PostgreSQL · indicadores' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'gold'), 'FM999G999G990') AS secondarystat, 'filas' AS detail__registros, '#c98500' AS color, 'postgres: gold.daily_field_metrics' AS detail__ubicacion, 'Indicadores diarios recalculados para los días afectados' AS detail__que_hace UNION ALL SELECT 'dash' AS id, 'Dashboards' AS title, 'Grafana · solo Gold' AS subtitle, to_char((SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'gold'), 'FM999G999G990') AS secondarystat, 'filas leídas' AS detail__registros, '#898781' AS color, 'http://localhost:3000' AS detail__ubicacion, 'Lee únicamente tablas gold con un usuario de solo lectura' AS detail__que_hace"
+        },
+        {
+          "refId": "edges",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 'e1' AS id, 'om' AS source, 'bronze' AS target, (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze' AND entity = 'open_meteo') || ' registros' AS mainstat UNION ALL SELECT 'e2' AS id, 'iot' AS source, 'bronze' AS target, (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze' AND entity = 'iot_simulator') || ' registros' AS mainstat UNION ALL SELECT 'e3' AS id, 'bronze' AS source, 'reglas' AS target, (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze') || ' registros' AS mainstat UNION ALL SELECT 'e4' AS id, 'reglas' AS source, 'silver' AS target, (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'silver') || ' válidos' AS mainstat UNION ALL SELECT 'e5' AS id, 'reglas' AS source, 'quarantine' AS target, (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'quarantine') || ' rechazados' AS mainstat UNION ALL SELECT 'e6' AS id, 'reglas' AS source, 'errores' AS target, (SELECT count(*)::int FROM gold.dq_errors WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start))) || ' hallazgos' AS mainstat UNION ALL SELECT 'e7' AS id, 'silver' AS source, 'gold' AS target, (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'gold') || ' filas (agregación diaria)' AS mainstat UNION ALL SELECT 'e8' AS id, 'gold' AS source, 'dash' AS target, '' || ' consulta' AS mainstat"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "mainstat"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Registros"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "secondarystat"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Qué son"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detail__registros"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Registros"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detail__ubicacion"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Dónde vive"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detail__que_hace"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Qué hace"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "layoutAlgorithm": "layered",
+        "zoomMode": "cooperative",
+        "nodes": {},
+        "edges": {}
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 15
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "🟠 Bronze · registros crudos (período)",
+      "description": "Registros que llegaron de las fuentes en el último lote (Parquet, sin modificar).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'bronze') AS v"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "noValue": "esperando la próxima corrida"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "🔵 Silver · válidos (período)",
+      "description": "VALID + WARNING: pasaron las reglas críticas y siguen hacia Gold.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'silver') AS v"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "noValue": "esperando la próxima corrida"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 5,
+        "y": 16,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "🔴 Quarantine · rechazados (período)",
+      "description": "INVALID: guardados aparte, sin modificar, con el motivo de rechazo.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'quarantine') AS v"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d03b3b"
+          },
+          "noValue": "esperando la próxima corrida"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 10,
+        "y": 16,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "🟡 Gold · filas actualizadas (período)",
+      "description": "Filas día·campo·fuente recalculadas y cargadas con upsert en PostgreSQL.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT (SELECT coalesce(sum(rows), 0)::int FROM gold.pipeline_layer_metrics WHERE _batch_id IN (SELECT _batch_id FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start)) AND layer = 'gold') AS v"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#c98500"
+          },
+          "noValue": "esperando la próxima corrida"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 15,
+        "y": 16,
+        "w": 5,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "⏱ Duración del último lote",
+      "description": "Desde que empieza la extracción hasta que termina la carga en Gold.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT extract(epoch FROM (max(finished_at) - min(started_at))) AS v FROM gold.pipeline_layer_metrics WHERE _batch_id = (SELECT r._batch_id FROM gold.dq_run_metrics r WHERE r.status = 'ok' AND EXISTS (SELECT 1 FROM gold.pipeline_layer_metrics m WHERE m._batch_id = r._batch_id) ORDER BY r.run_start DESC LIMIT 1)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "noValue": "esperando la próxima corrida",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 20,
+        "y": 16,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "¿Qué hace cada capa?",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "",
+      "options": {
+        "mode": "markdown",
+        "content": "| Capa | Dónde vive | Qué pasa acá | Regla de oro |\n|---|---|---|---|\n| 🟠 **Bronze** | Parquet · `storage/bronze/{fuente}/` | Se guarda cada lote **tal como llegó**, con linaje: `_batch_id`, `_ingested_at`, `_source_system`. | **Nunca se modifica** (append-only): permite reprocesar sin volver a llamar a la API. |\n| ⚙️ **Reglas DQ01–DQ12** | `config/rules.yaml` | Se tipan los datos, se eliminan duplicados y se evalúan las 12 reglas. Cada registro queda **VALID**, **WARNING** o **INVALID**. | Los umbrales se cambian **sin tocar código**. |\n| 🔵 **Silver** | Parquet · `storage/silver/` | Registros **VALID y WARNING**, con timestamp UTC y sus códigos de warning. | Solo datos utilizables. |\n| 🔴 **Quarantine** | Parquet · `storage/quarantine/` | Registros **INVALID** sin modificar, con el motivo (`_rejection_reasons`, ej. `DQ05;DQ07`). | No se pierde nada: todo rechazo se puede auditar. |\n| 🟡 **Gold** | PostgreSQL · `gold.*` | Indicadores diarios por campo y fuente, **recalculados** para los días que tocó el lote, más el registro de errores y el DQ Score. | **Lo único que lee el dashboard.** |\n\n**Incremental:** cada 15 minutos el *scheduler* pide a cada fuente solo la ventana nueva `(watermark, ahora]`. Si cambia una regla, `python -m src.main --reprocess <lote>` regenera Silver y Gold desde Bronze."
+      },
+      "transparent": true,
+      "id": 9,
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Lote a lote",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Cómo se reparte cada lote de Bronze",
+      "description": "Cada barra es un lote: la parte azul siguió a Silver y la roja quedó en Quarantine. La barra completa es todo lo que entró a Bronze.",
+      "timeFrom": "2d",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT r.run_start AS time, sum(m.rows) FILTER (WHERE m.layer = 'silver') AS \"Silver (válidos)\", sum(m.rows) FILTER (WHERE m.layer = 'quarantine') AS \"Quarantine (rechazados)\" FROM gold.pipeline_layer_metrics m JOIN gold.dq_run_metrics r USING (_batch_id) WHERE $__timeFilter(r.run_start) GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisBorderShow": false,
+            "gradientMode": "none"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Silver (válidos)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Quarantine (rechazados)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d03b3b"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cuánto tarda cada etapa",
+      "description": "Segundos por etapa en cada lote (meta RNF08: la corrida completa en menos de 5 minutos).",
+      "timeFrom": "2d",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT r.run_start AS time, sum(extract(epoch FROM m.finished_at - m.started_at)) FILTER (WHERE m.layer = 'bronze') AS \"Bronze (extracción)\", sum(extract(epoch FROM m.finished_at - m.started_at)) FILTER (WHERE m.layer = 'silver') AS \"Silver (validación)\", sum(extract(epoch FROM m.finished_at - m.started_at)) FILTER (WHERE m.layer = 'gold') AS \"Gold (carga)\" FROM gold.pipeline_layer_metrics m JOIN gold.dq_run_metrics r USING (_batch_id) WHERE $__timeFilter(r.run_start) AND m.started_at IS NOT NULL GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisBorderShow": false,
+            "gradientMode": "none"
+          },
+          "noValue": "Se completa con la próxima corrida del scheduler"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bronze (extracción)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Silver (validación)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Gold (carga)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "id": 12,
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Ventanas incrementales por fuente",
+      "description": "Qué rango de datos pidió cada lote a cada fuente. La ventana siguiente arranca donde terminó la anterior (watermark), así nunca se extrae dos veces lo mismo.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT m.entity AS \"Fuente\", m.window_start AS \"Desde (exclusivo)\", m.window_end AS \"Hasta\", m.rows AS \"Registros\", left(m._batch_id, 8) AS \"Lote\" FROM gold.pipeline_layer_metrics m JOIN gold.dq_run_metrics r USING (_batch_id) WHERE m.layer = 'bronze' ORDER BY r.run_start DESC, m.entity LIMIT 30"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fuente"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Registros"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 13,
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 11,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Historial de lotes",
+      "description": "Cuántos registros pasó cada lote por cada capa. Bronze = Silver + Quarantine.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT r.run_start AS \"Inicio\", sum(m.rows) FILTER (WHERE m.layer = 'bronze') AS \"Bronze\", sum(m.rows) FILTER (WHERE m.layer = 'silver') AS \"Silver\", sum(m.rows) FILTER (WHERE m.layer = 'quarantine') AS \"Quarantine\", sum(m.rows) FILTER (WHERE m.layer = 'gold') AS \"Gold\", r.dq_score AS \"DQ Score\" FROM gold.dq_run_metrics r JOIN gold.pipeline_layer_metrics m USING (_batch_id) GROUP BY r._batch_id, r.run_start, r.dq_score, r.status ORDER BY r.run_start DESC LIMIT 30"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bronze"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Silver"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Quarantine"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d03b3b"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Gold"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DQ Score"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 14,
+      "gridPos": {
+        "x": 11,
+        "y": 40,
+        "w": 13,
+        "h": 9
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:   # lo reutiliza deploy.yml antes de promover una imagen
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Validar reglas de calidad (config/rules.yaml)
+        run: python -m src.validation.check_rules
+      - name: Validar notebooks
+        run: python -c "import glob, nbformat; [nbformat.validate(nbformat.read(p, as_version=4)) for p in glob.glob('notebooks/*.ipynb')]"
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: agro
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/agro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Crear esquema
+        run: psql "postgresql://postgres:postgres@localhost:5432/agro" -v ON_ERROR_STOP=1 -f sql/schema/01_schema.sql
+      - name: Tests (Pytest) + cobertura mínima del 80% en validación
+        run: pytest --cov=src --cov-report=term-missing && coverage report --include="src/validation/*" --fail-under=80
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build de la imagen
+        run: docker build -t agro-pipeline:${{ github.sha }} .
