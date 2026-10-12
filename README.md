@@ -118,6 +118,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 
 ## Stack tecnológico
 
+
 | Componente | Tecnología |
 |---|---|
 | Fuente meteorológica | Open-Meteo Historical Weather API |
