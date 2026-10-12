@@ -186,8 +186,8 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 git clone https://github.com/SebastianMB1/IngSoftwareETL.git
 cd IngSoftwareETL
 
-# 2. Configurar variables de entorno (completar las contraseñas)
-cp .env.example .env
+# 2. Variables de entorno: no hace falta nada, el código y Docker usan .env.example.
+#    Para usar contraseñas propias: cp .env.example .env y editarlo (.env pisa a .env.example y no se sube a Git)
 
 # 3. Levantar todo: PostgreSQL + pipeline programado en DEV, STAGING y PROD (cada 15 min) + dashboards
 docker compose up -d

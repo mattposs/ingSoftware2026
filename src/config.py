@@ -41,7 +41,8 @@ def load_fields() -> list[dict[str, Any]]:
 
 
 def current_env() -> str:
-    load_dotenv(PROJECT_ROOT / ".env")
+    load_dotenv(PROJECT_ROOT / ".env")           # propio de cada máquina (ignorado por Git)
+    load_dotenv(PROJECT_ROOT / ".env.example")   # valores por defecto: no pisa lo ya definido
     env = os.getenv("APP_ENV", "dev").strip().lower()
     if env not in ENVIRONMENTS:
         raise ValueError(f"APP_ENV={env!r} no es válido. Opciones: {', '.join(ENVIRONMENTS)}")

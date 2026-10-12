@@ -1,11 +1,17 @@
 # docker compose up -d   -> base de datos + pipeline programado en DEV, STAGING y PROD + dashboards
 # Dashboards: http://localhost:3000 (selector "Entorno" arriba a la izquierda)
 
+# Variables: .env.example da los valores por defecto y .env (opcional, ignorado por Git) los pisa.
+x-env-file: &env_file
+  - path: .env.example
+  - path: .env
+    required: false
+
 # Plantilla común de los schedulers: misma imagen, distinto entorno (APP_ENV).
 x-scheduler: &scheduler
   build: .
   command: ["python", "-m", "src.scheduler"]
-  env_file: .env
+  env_file: *env_file
   volumes:
     - ./storage:/app/storage          # cada entorno usa storage/<entorno>/
   depends_on:
@@ -16,7 +22,7 @@ x-scheduler: &scheduler
 services:
   postgres:
     image: postgres:16
-    env_file: .env
+    env_file: *env_file
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -50,10 +56,10 @@ services:
   # Dashboards (EDT 8.1): leen solo gold.* con el usuario de solo lectura.
   grafana:
     image: grafana/grafana-oss:11.4.0
-    env_file: .env
+    env_file: *env_file
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Definir GRAFANA_ADMIN_PASSWORD en .env}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-cambiar-esto-tambien}
       GF_AUTH_ANONYMOUS_ENABLED: "true"          # ver los dashboards sin login (solo lectura)
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_USERS_DEFAULT_THEME: dark
@@ -76,7 +82,7 @@ services:
   pipeline:
     build: .
     image: agro-pipeline:local
-    env_file: .env
+    env_file: *env_file
     environment: {POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}
     volumes:
       - ./storage:/app/storage
