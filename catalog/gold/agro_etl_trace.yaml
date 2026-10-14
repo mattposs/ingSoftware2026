@@ -5,25 +5,25 @@ layer: gold
 description: Registros de muestra de cada lote (válidos, con warning y rechazados)
   para seguirlos paso a paso.
 location: postgres:gold.etl_trace
-last_cataloged_at: '2026-10-05T22:33:54.360758+00:00'
+last_cataloged_at: '2026-10-14T01:02:01.366698+00:00'
 columns:
 - name: trace_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: 54097779-1
+  sample_value: 9b1c8b81-1
   description: 'Identificador del registro de muestra: <lote>-<n>.'
 - name: _batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: 54097779-734c-48c0-adbf-61f4b283aa89
+  sample_value: 9b1c8b81-0295-4b2f-83f8-5d3c13ed38e5
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: created_at
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-05 22:32:08.482456+00:00'
+  sample_value: '2026-10-14 01:01:55.188044+00:00'
   description: Cuándo se guardó la traza.
 - name: dq_status
   data_type: str
@@ -36,7 +36,7 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: iot_simulator
+  sample_value: open_meteo
   description: 'Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones
     cada 15 min).'
 - name: field_id
@@ -49,17 +49,17 @@ columns:
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-05 22:30:00+00:00'
+  sample_value: '2026-10-07 00:00:00+00:00'
   description: Fecha y hora de la medición afectada (vacío si el timestamp era inválido).
 - name: fecha_negocio
   data_type: object
   nullable: true
-  null_percentage: 25.0
-  sample_value: '2026-10-05'
+  null_percentage: 33.33
+  sample_value: '2026-10-06'
   description: Día de Gold (hora local) al que aporta el registro; vacío si fue rechazado.
 - name: titulo
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ✔ VALID · LIT-01 · iot_simulator · 2026-10-05T22:30:00Z
+  sample_value: ✔ VALID · LIT-01 · open_meteo · 2026-10-07T00:00
   description: Texto con el que se elige el registro en el dashboard «ETL paso a paso».

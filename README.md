@@ -30,9 +30,9 @@
 
 ## Contexto
 
-Una empresa agropecuaria tiene 8 campos (20.000 ha en Entre Ríos, Santa Fe y Córdoba) con 200 sensores IoT en total. Cada sensor reporta cada 15 minutos (96 lecturas por día, 19.200 registros por día entre todos) y mide temperatura, humedad ambiental, humedad del suelo, precipitación y viento cada 15 minutos.
+Una empresa agropecuaria tiene 8 campos (20.000 ha en Entre Ríos, Santa Fe y Córdoba) con 200 sensores IoT en total. Cada sensor mide temperatura, humedad ambiental, humedad del suelo, precipitación y viento, y reporta cada 15 minutos (96 lecturas por día; 19.200 registros por día entre los 200 sensores). El simulador de la POC genera una lectura por campo (8 × 96 = 768 por día), no por sensor; ver [`docs/revision/paso-1.md`](docs/revision/paso-1.md).
 
-Los datos llegan con faltantes, duplicados, valores fuera de rango, unidades incorrectas y períodos sin información. Alrededor del 8% de los registros tiene algún error, y eso termina en decisiones de riego y siembra tomadas con datos equivocados.
+Los datos llegan con faltantes, duplicados, valores fuera de rango, unidades incorrectas y períodos sin información. Alrededor del 14% de los registros tiene algún problema (tasa que simula la POC), y eso termina en decisiones de riego y siembra tomadas con datos equivocados.
 
 Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo es un pipeline que ingiera, valide, transforme y monitoree esos datos, con CI/CD.
 
@@ -115,6 +115,8 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 | DQ10 | Humedad del suelo | Validez | Alta | Rechazo fuera de 0 a 1 m³/m³; warning fuera de 0,02 a 0,60 | Rechazar / Warning |
 | DQ11 | Sin períodos sin datos | Completitud | Media | Hueco ≥ 30 min (IoT) o ≥ 120 min (Open-Meteo) por campo y variable | Warning |
 | DQ12 | Sin cambios anormales | Anomalía | Media | Temperatura > 8 °C/h · humedad > 40 pts/h · suelo > 0,15 m³/m³ por hora | Warning |
+
+**Un rechazo en una sola variable invalida el registro completo.** Cada registro trae las cinco variables a la vez. Si una sola incumple una regla de rechazo (por ejemplo, humedad ambiental de 135 %, regla DQ07), el registro entero va a Quarantine con ese motivo: las otras cuatro variables, aunque estén bien, no llegan a Silver ni a Gold. Un WARNING, en cambio, no rechaza: el registro se publica y queda marcado. Ver la decisión D22 en [`docs/decisiones.md`](docs/decisiones.md).
 
 ## Stack tecnológico
 
@@ -222,11 +224,11 @@ Para correr las etapas por separado y explorar los datos están las notebooks de
 
 ## Entornos: dev, staging y prod
 
-El mismo código corre en tres entornos aislados. Cada uno tiene su propia base, su propio lake y su propio *scheduler*:
+El mismo código corre en tres entornos aislados. Cada uno tiene su propia base, su propio lake y su propio *scheduler*. Los tres son **locales**: corren con Docker Compose en la misma máquina (un PostgreSQL con tres bases), sin nube y sin costo adicional (decisión D17):
 
 | Entorno | Para qué | Base | Lake | Configuración |
 |---|---|---|---|---|
-| **DEV** | Probar código y reglas nuevas | `agro_dev` | `storage/dev/` | Solo simulador IoT, 20% de errores inyectados (para ejercitar todas las reglas) |
+| **DEV** | Probar código y reglas nuevas | `agro_dev` | `storage/dev/` | Solo simulador IoT, 20% de errores inyectados (para ejercitar todas las reglas); STAGING y PROD usan el 14% |
 | **STAGING** | Ensayo general antes de producción | `agro_staging` | `storage/staging/` | Igual que PROD (ambas fuentes), con datos propios |
 | **PROD** | Lo que consume el cliente | `agro_prod` | `storage/prod/` | Configuración base ([`config/pipeline.yaml`](config/pipeline.yaml)) |
 

@@ -3,7 +3,7 @@
 **Capa:** `GOLD`  
 **Dominio:** `agro` | **Entidad:** `fields`  
 **Ubicación / Destino:** `postgres:gold.fields`  
-**Última Catalogación:** `2026-10-05T22:33:53.535963+00:00`  
+**Última Catalogación:** `2026-10-14T01:02:00.759353+00:00`  
 
 > Campos del cliente (fuente: config/fields.yaml).
 

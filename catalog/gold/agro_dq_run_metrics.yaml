@@ -4,25 +4,25 @@ entity: dq_run_metrics
 layer: gold
 description: Resumen de cada corrida del pipeline y su Data Quality Score.
 location: postgres:gold.dq_run_metrics
-last_cataloged_at: '2026-10-05T22:33:53.738686+00:00'
+last_cataloged_at: '2026-10-14T01:02:00.964897+00:00'
 columns:
 - name: _batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: 54097779-734c-48c0-adbf-61f4b283aa89
+  sample_value: 9b1c8b81-0295-4b2f-83f8-5d3c13ed38e5
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: run_start
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-05 22:32:05.757785+00:00'
+  sample_value: '2026-10-14 01:01:53.421180+00:00'
   description: Inicio de la corrida (UTC).
 - name: run_end
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-05 22:32:09.443668+00:00'
+  sample_value: '2026-10-14 01:01:55.844484+00:00'
   description: Fin de la corrida (UTC); vacío si sigue en curso o falló antes de terminar.
 - name: status
   data_type: str
@@ -34,29 +34,36 @@ columns:
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '6'
+  sample_value: '1339'
   description: Registros recibidos en el lote.
 - name: valid
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '5'
+  sample_value: '1191'
   description: Registros sin hallazgos.
 - name: warning
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '1'
+  sample_value: '57'
   description: Registros publicados con al menos un warning.
 - name: invalid
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '0'
+  sample_value: '91'
   description: Registros rechazados (enviados a quarantine).
 - name: dq_score
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '100.0'
-  description: Data Quality Score = (valid + warning) / total × 100.
+  sample_value: '88.95'
+  description: Data Quality Score estricto = valid / total × 100 (los warning no cuentan).
+- name: pct_utilizable
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '93.2'
+  description: '% utilizable = (valid + warning) / total × 100: registros publicados
+    en Silver.'

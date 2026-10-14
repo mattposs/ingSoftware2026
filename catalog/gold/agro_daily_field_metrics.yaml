@@ -4,13 +4,13 @@ entity: daily_field_metrics
 layer: gold
 description: Indicadores diarios por campo y fuente. Única tabla que consume el dashboard.
 location: postgres:gold.daily_field_metrics
-last_cataloged_at: '2026-10-05T22:33:53.655680+00:00'
+last_cataloged_at: '2026-10-14T01:02:00.848453+00:00'
 columns:
 - name: fecha
   data_type: object
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-09-27'
+  sample_value: '2026-10-06'
   description: Día de las mediciones en hora local del negocio (America/Argentina/Buenos_Aires).
 - name: field_id
   data_type: str
@@ -28,7 +28,7 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '15.333'
+  sample_value: '19.367'
   description: Temperatura promedio del día, en °C, solo con registros VALID y WARNING.
 - name: precipitacion_total
   data_type: float64
@@ -40,13 +40,13 @@ columns:
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '0.478'
+  sample_value: '0.329'
   description: Humedad del suelo promedio del día, en m³/m³.
 - name: humedad_ambiental_promedio
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '85.667'
+  sample_value: '77.333'
   description: Humedad relativa ambiental promedio del día, en %.
 - name: cantidad_mediciones
   data_type: int64
@@ -60,17 +60,17 @@ columns:
   nullable: false
   null_percentage: 0.0
   sample_value: '100.0'
-  description: Publicados / (publicados + rechazados atribuibles a ese día, campo
-    y fuente) × 100.
+  description: 'Score estricto del día: registros VALID / (publicados + rechazados
+    atribuibles a ese día, campo y fuente) × 100. Los WARNING no cuentan como válidos.'
 - name: _batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: dbe6e15b-39eb-4e4b-9102-7e9909146eb7
+  sample_value: 9b1c8b81-0295-4b2f-83f8-5d3c13ed38e5
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: _updated_at
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-05 22:32:12.376737+00:00'
+  sample_value: '2026-10-14 01:01:55.656158+00:00'
   description: Última vez que se recalculó la fila.
