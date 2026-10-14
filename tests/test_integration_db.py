@@ -43,7 +43,7 @@ def test_upsert_es_idempotente(engine):
         before = conn.execute(text("SELECT count(*) FROM gold.fields")).scalar()
     pipeline.sync_fields(engine)
     with engine.connect() as conn:
-        assert conn.execute(text("SELECT count(*) FROM gold.fields")).scalar() == before == 6
+        assert conn.execute(text("SELECT count(*) FROM gold.fields")).scalar() == before == 8
 
 
 def test_corrida_completa_con_simulador(engine):
