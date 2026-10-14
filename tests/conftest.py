@@ -21,7 +21,7 @@ def field_ids():
     return {f["field_id"] for f in load_fields()}
 
 
-def reading(ts="2026-10-15T10:00:00Z", field_id="C01", source="iot_simulator", **overrides) -> dict:
+def reading(ts="2026-10-15T10:00:00Z", field_id="LIT-01", source="iot_simulator", **overrides) -> dict:
     """Una lectura válida; los kwargs pisan cualquier columna."""
     rec = {
         "timestamp": ts,
@@ -41,7 +41,7 @@ def reading(ts="2026-10-15T10:00:00Z", field_id="C01", source="iot_simulator", *
     return rec
 
 
-def series(n=4, start="2026-10-15T10:00:00Z", freq_min=15, field_id="C01", **overrides) -> list[dict]:
+def series(n=4, start="2026-10-15T10:00:00Z", freq_min=15, field_id="LIT-01", **overrides) -> list[dict]:
     """n lecturas consecutivas válidas del mismo campo."""
     times = pd.date_range(start, periods=n, freq=f"{freq_min}min")
     return [reading(t.strftime("%Y-%m-%dT%H:%M:%SZ"), field_id, **overrides) for t in times]

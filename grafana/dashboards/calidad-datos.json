@@ -1,7 +1,7 @@
 {
   "uid": "agro-calidad",
   "title": "Calidad de datos agroclimáticos",
-  "description": "Pipeline DataOps · UnaCocuCha SRL para Agropecuaria Los Tres Ombúes S.A. (POC UADE 2026)",
+  "description": "Pipeline DataOps · UnaCocuCha SRL para Grupo Agro del Litoral S.A. (POC UADE 2026)",
   "tags": [
     "agro",
     "dataops",
@@ -65,8 +65,8 @@
           "type": "grafana-postgresql-datasource",
           "uid": "${entorno}"
         },
-        "query": "SELECT field_id || ' · ' || nombre AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
-        "definition": "SELECT field_id || ' · ' || nombre AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
+        "query": "SELECT field_id || ' · ' || localidad AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
+        "definition": "SELECT field_id || ' · ' || localidad AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
@@ -663,7 +663,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.nombre AS metric, m.temperatura_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
+          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.localidad AS metric, m.temperatura_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
         }
       ],
       "fieldConfig": {
@@ -690,7 +690,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C01.*"
+              "options": "LIT-01.*"
             },
             "properties": [
               {
@@ -705,7 +705,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C02.*"
+              "options": "LIT-02.*"
             },
             "properties": [
               {
@@ -720,7 +720,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C03.*"
+              "options": "LIT-03.*"
             },
             "properties": [
               {
@@ -735,7 +735,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C04.*"
+              "options": "LIT-04.*"
             },
             "properties": [
               {
@@ -750,7 +750,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C05.*"
+              "options": "LIT-05.*"
             },
             "properties": [
               {
@@ -765,7 +765,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C06.*"
+              "options": "LIT-06.*"
             },
             "properties": [
               {
@@ -773,6 +773,36 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-07.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e08a3c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-08.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7a5fc7"
                 }
               }
             ]
@@ -816,7 +846,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.nombre AS metric, m.humedad_suelo_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
+          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.localidad AS metric, m.humedad_suelo_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
         }
       ],
       "fieldConfig": {
@@ -843,7 +873,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C01.*"
+              "options": "LIT-01.*"
             },
             "properties": [
               {
@@ -858,7 +888,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C02.*"
+              "options": "LIT-02.*"
             },
             "properties": [
               {
@@ -873,7 +903,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C03.*"
+              "options": "LIT-03.*"
             },
             "properties": [
               {
@@ -888,7 +918,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C04.*"
+              "options": "LIT-04.*"
             },
             "properties": [
               {
@@ -903,7 +933,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C05.*"
+              "options": "LIT-05.*"
             },
             "properties": [
               {
@@ -918,7 +948,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C06.*"
+              "options": "LIT-06.*"
             },
             "properties": [
               {
@@ -926,6 +956,36 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-07.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e08a3c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-08.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7a5fc7"
                 }
               }
             ]
@@ -969,7 +1029,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT f.nombre AS \"Campo\", f.provincia AS \"Provincia\", f.latitude::float AS latitude, f.longitude::float AS longitude, round(avg(m.porcentaje_calidad), 1)::float AS \"Calidad (%)\", sum(m.precipitacion_total)::float AS \"Lluvia (mm)\", round(avg(m.temperatura_promedio), 1)::float AS \"Temp. media (°C)\" FROM gold.fields f JOIN gold.daily_field_metrics m USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1, 2, 3, 4"
+          "rawSql": "SELECT f.localidad AS \"Campo\", f.provincia AS \"Provincia\", f.latitude::float AS latitude, f.longitude::float AS longitude, round(avg(m.porcentaje_calidad), 1)::float AS \"Calidad (%)\", sum(m.precipitacion_total)::float AS \"Lluvia (mm)\", round(avg(m.temperatura_promedio), 1)::float AS \"Temp. media (°C)\" FROM gold.fields f JOIN gold.daily_field_metrics m USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1, 2, 3, 4"
         }
       ],
       "fieldConfig": {
@@ -1087,7 +1147,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT f.field_id || ' · ' || f.nombre AS \"Campo\", sum(m.precipitacion_total) AS \"Lluvia (mm)\" FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1 ORDER BY 1"
+          "rawSql": "SELECT f.field_id || ' · ' || f.localidad AS \"Campo\", sum(m.precipitacion_total) AS \"Lluvia (mm)\" FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1 ORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -1158,7 +1218,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.nombre AS metric, m.porcentaje_calidad AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
+          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.localidad AS metric, m.porcentaje_calidad AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
         }
       ],
       "fieldConfig": {

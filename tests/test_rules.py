@@ -52,7 +52,7 @@ def test_dq03_tolera_10_minutos_de_reloj(rules, field_ids):
 
 
 def test_dq04_campo_inexistente(rules, field_ids):
-    r = run([reading(field_id="C99")], rules, field_ids)
+    r = run([reading(field_id="LIT-99")], rules, field_ids)
     assert len(hits(r, "DQ04", REJECT)) == 1
 
 
@@ -72,7 +72,7 @@ def test_dq05_distinta_fuente_no_es_duplicado(rules, field_ids):
 
 def test_dq05_duplicado_contra_lotes_anteriores(rules, field_ids):
     context = pd.DataFrame(
-        [{"source": "iot_simulator", "field_id": "C01", "timestamp": pd.Timestamp("2026-10-15T10:00:00Z")}]
+        [{"source": "iot_simulator", "field_id": "LIT-01", "timestamp": pd.Timestamp("2026-10-15T10:00:00Z")}]
     )
     r = run([reading()], rules, field_ids, context=context)
     assert len(hits(r, "DQ05", REJECT)) == 1
@@ -156,7 +156,7 @@ def test_dq11_valor_nulo_genera_hueco_en_esa_variable(rules, field_ids):
 
 def test_dq11_compara_con_el_lote_anterior(rules, field_ids):
     context = pd.DataFrame(
-        [{"source": "iot_simulator", "field_id": "C01", "timestamp": pd.Timestamp("2026-10-15T09:00:00Z"),
+        [{"source": "iot_simulator", "field_id": "LIT-01", "timestamp": pd.Timestamp("2026-10-15T09:00:00Z"),
           "temperature": 20.0, "humidity": 60.0, "soil_moisture": 0.3, "precipitation": 0.0, "wind_speed": 10.0}]
     )
     r = run([reading(ts="2026-10-15T10:00:00Z")], rules, field_ids, context=context)

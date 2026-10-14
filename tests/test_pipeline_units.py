@@ -35,7 +35,7 @@ def test_reglas_detectan_al_menos_95_por_ciento_de_errores_inyectados(rules, fie
 def test_simulador_genera_una_lectura_cada_15_min_por_campo():
     cfg = dict(load_pipeline()["sources"]["iot_simulator"], seed=1, error_rate=0)
     df = iot_simulator.generate(load_fields(), NOW - timedelta(hours=24), NOW, cfg)
-    assert len(df) == 6 * 96  # 576 registros por día (documento, sección 2.1)
+    assert len(df) == 8 * 96  # 768 registros por día: una estación por campo (el simulador no es por sensor)
     assert df["_sim_injected_error"].isna().all()
 
 
@@ -132,7 +132,7 @@ def test_errores_tienen_el_detalle_de_rf08(rules, field_ids):
     e = errors_frame(r, rules, "b1")
     row = e.iloc[0]
     assert (row.rule_id, row.variable, row.action, row.severidad, row.field_id) == (
-        "DQ07", "humidity", "REJECT", "Alta", "C01")
+        "DQ07", "humidity", "REJECT", "Alta", "LIT-01")
     assert row.measured_at == pd.Timestamp("2026-10-15T10:00:00Z")
 
 

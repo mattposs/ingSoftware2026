@@ -43,8 +43,8 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: C01
-  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+  sample_value: LIT-01
+  description: Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields).
 - name: measured_at
   data_type: datetime64[us, UTC]
   nullable: false
@@ -61,5 +61,5 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ✔ VALID · C01 · iot_simulator · 2026-10-05T22:30:00Z
+  sample_value: ✔ VALID · LIT-01 · iot_simulator · 2026-10-05T22:30:00Z
   description: Texto con el que se elige el registro en el dashboard «ETL paso a paso».

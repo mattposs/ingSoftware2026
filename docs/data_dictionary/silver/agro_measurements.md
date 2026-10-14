@@ -13,7 +13,7 @@
 |---|---|---|---|---|
 | `timestamp` | `datetime64[us, UTC]` | No | `2026-10-05 22:30:00+00:00` | Fecha y hora de la medición. En Bronze es el texto crudo recibido; desde Silver, datetime UTC. |
 | `source` | `str` | No | `iot_simulator` | Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones cada 15 min). |
-| `field_id` | `string` | No | `C01` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
+| `field_id` | `string` | No | `LIT-01` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
 | `latitude` | `float64` | No | `-34.05` | Latitud de la estación del campo, en grados decimales. |
 | `longitude` | `float64` | No | `-60.55` | Longitud de la estación del campo, en grados decimales. |
 | `temperature` | `float64` | No | `16.81` | Temperatura del aire a 2 m, en °C. |

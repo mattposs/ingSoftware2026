@@ -12,7 +12,7 @@
 | Columna | Tipo de Dato | Nulos observados | Ejemplo | Descripción |
 |---|---|---|---|---|
 | `timestamp` | `string` | Sí (16.67%) | `2026-13-45 25:61` | Fecha y hora de la medición. En Bronze es el texto crudo recibido; desde Silver, datetime UTC. |
-| `field_id` | `string` | No | `C01` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
+| `field_id` | `string` | No | `LIT-01` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
 | `latitude` | `float64` | No | `-34.05` | Latitud de la estación del campo, en grados decimales. |
 | `longitude` | `float64` | No | `-60.55` | Longitud de la estación del campo, en grados decimales. |
 | `temperature` | `float64` | No | `9.63` | Temperatura del aire a 2 m, en °C. |

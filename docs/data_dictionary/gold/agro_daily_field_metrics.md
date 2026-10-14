@@ -12,7 +12,7 @@
 | Columna | Tipo de Dato | Nulos observados | Ejemplo | Descripción |
 |---|---|---|---|---|
 | `fecha` | `object` | No | `2026-09-27` | Día de las mediciones en hora local del negocio (America/Argentina/Buenos_Aires). |
-| `field_id` | `str` | No | `C01` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
+| `field_id` | `str` | No | `LIT-01` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
 | `fuente` | `str` | No | `open_meteo` | Fuente de las mediciones agregadas (open_meteo o iot_simulator). |
 | `temperatura_promedio` | `float64` | No | `15.333` | Temperatura promedio del día, en °C, solo con registros VALID y WARNING. |
 | `precipitacion_total` | `float64` | No | `0.0` | Precipitación total del día, en mm. |

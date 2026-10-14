@@ -19,12 +19,23 @@ CREATE TABLE IF NOT EXISTS etl.watermarks (
 -- Campos del cliente (se sincroniza desde config/fields.yaml en cada corrida).
 CREATE TABLE IF NOT EXISTS gold.fields (
     field_id   TEXT PRIMARY KEY,
-    nombre     TEXT          NOT NULL,
+    localidad  TEXT          NOT NULL,
     provincia  TEXT          NOT NULL,
     latitude   NUMERIC(8, 5) NOT NULL,
     longitude  NUMERIC(8, 5) NOT NULL,
-    hectareas  INTEGER
+    hectareas  INTEGER,
+    sensores   INTEGER
 );
+
+-- Migración de bases creadas con el esquema anterior (nombre -> localidad, sensores nuevo). Idempotente.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'gold' AND table_name = 'fields' AND column_name = 'nombre') THEN
+        ALTER TABLE gold.fields RENAME COLUMN nombre TO localidad;
+    END IF;
+END $$;
+ALTER TABLE gold.fields ADD COLUMN IF NOT EXISTS sensores INTEGER;
 
 -- Indicadores diarios por campo y fuente: lo único que consume el dashboard (RF10, RNF04).
 CREATE TABLE IF NOT EXISTS gold.daily_field_metrics (

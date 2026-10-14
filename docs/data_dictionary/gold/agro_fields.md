@@ -11,9 +11,10 @@
 
 | Columna | Tipo de Dato | Nulos observados | Ejemplo | Descripción |
 |---|---|---|---|---|
-| `field_id` | `str` | No | `C01` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
-| `nombre` | `str` | No | `La Aurora` | Nombre del campo. |
-| `provincia` | `str` | No | `Buenos Aires` | Provincia donde está el campo. |
-| `latitude` | `float64` | No | `-34.05` | Latitud de la estación del campo, en grados decimales. |
-| `longitude` | `float64` | No | `-60.55` | Longitud de la estación del campo, en grados decimales. |
-| `hectareas` | `int64` | No | `3200` | Superficie del campo en hectáreas. |
+| `field_id` | `str` | No | `LIT-01` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
+| `localidad` | `str` | No | `Crespo` | Localidad donde está el campo. |
+| `provincia` | `str` | No | `Entre Ríos` | Provincia donde está el campo. |
+| `latitude` | `float64` | No | `-32.03` | Latitud de la estación del campo, en grados decimales. |
+| `longitude` | `float64` | No | `-60.31` | Longitud de la estación del campo, en grados decimales. |
+| `hectareas` | `int64` | No | `2200` | Superficie del campo en hectáreas. |
+| `sensores` | `int64` | No | `24` | Cantidad de sensores IoT instalados en el campo. |

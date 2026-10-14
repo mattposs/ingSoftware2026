@@ -10,35 +10,41 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: C01
-  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
-- name: nombre
+  sample_value: LIT-01
+  description: Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields).
+- name: localidad
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: La Aurora
-  description: Nombre del campo.
+  sample_value: Crespo
+  description: Localidad donde está el campo.
 - name: provincia
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: Buenos Aires
+  sample_value: Entre Ríos
   description: Provincia donde está el campo.
 - name: latitude
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '-34.05'
+  sample_value: '-32.03'
   description: Latitud de la estación del campo, en grados decimales.
 - name: longitude
   data_type: float64
   nullable: false
   null_percentage: 0.0
-  sample_value: '-60.55'
+  sample_value: '-60.31'
   description: Longitud de la estación del campo, en grados decimales.
 - name: hectareas
   data_type: int64
   nullable: false
   null_percentage: 0.0
-  sample_value: '3200'
+  sample_value: '2200'
   description: Superficie del campo en hectáreas.
+- name: sensores
+  data_type: int64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '24'
+  description: Cantidad de sensores IoT instalados en el campo.

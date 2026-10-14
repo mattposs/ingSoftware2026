@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED)
 
 > Prueba de concepto (POC) del Proyecto Grupal de Ingeniería de Software – UADE (2026).
-> Consultora: **UnaCocuCha SRL** · Cliente (ficticio): **Agropecuaria Los Tres Ombúes S.A.**
+> Consultora: **UnaCocuCha SRL** · Cliente (ficticio): **Grupo Agro del Litoral S.A.**
 > Documento de proyecto: [`docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf`](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf)
 
 ## Tabla de contenidos
@@ -30,7 +30,7 @@
 
 ## Contexto
 
-Una empresa agropecuaria tiene 6 campos (unas 18.000 ha en Buenos Aires, Santa Fe y Córdoba), con una estación IoT por campo. Cada estación mide temperatura, humedad ambiental, humedad del suelo, precipitación y viento cada 15 minutos.
+Una empresa agropecuaria tiene 8 campos (20.000 ha en Entre Ríos, Santa Fe y Córdoba) con 200 sensores IoT en total. Cada sensor reporta cada 15 minutos (96 lecturas por día, 19.200 registros por día entre todos) y mide temperatura, humedad ambiental, humedad del suelo, precipitación y viento cada 15 minutos.
 
 Los datos llegan con faltantes, duplicados, valores fuera de rango, unidades incorrectas y períodos sin información. Alrededor del 8% de los registros tiene algún error, y eso termina en decisiones de riego y siembra tomadas con datos equivocados.
 
@@ -63,7 +63,7 @@ Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo 
 ```mermaid
 flowchart TD
     A[Open-Meteo<br/>Historical API · horario] --> X
-    B[Simulador IoT<br/>6 campos · cada 15 min] --> X
+    B[Simulador IoT<br/>8 campos · cada 15 min] --> X
     X[Extracción incremental<br/>watermark + linaje] --> C
     W[(etl.watermarks)] <-.-> X
     subgraph Lake["Lake Parquet (storage/)"]
@@ -106,7 +106,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 | DQ01 | `timestamp` obligatorio | Completitud | Crítica | No nulo ni vacío | Rechazar |
 | DQ02 | `field_id` obligatorio | Completitud | Crítica | No nulo ni vacío | Rechazar |
 | DQ03 | Timestamp con formato válido | Consistencia | Crítica | ISO 8601; no futuro (tolerancia 10 min); posterior a 2000 | Rechazar |
-| DQ04 | Campo existente | Integridad | Crítica | `field_id` en `config/fields.yaml` (C01–C06) | Rechazar |
+| DQ04 | Campo existente | Integridad | Crítica | `field_id` en `config/fields.yaml` (LIT-01 a LIT-08) | Rechazar |
 | DQ05 | Sin duplicados | Unicidad | Crítica | Clave `(source, field_id, timestamp)`, también contra lotes anteriores; se conserva el primero | Rechazar |
 | DQ06 | Unidades esperadas | Consistencia | Crítica | °C · % · m³/m³ · mm · km/h | Rechazar |
 | DQ07 | Humedad ambiental | Validez | Alta | 0 ≤ humedad ≤ 100 | Rechazar |
@@ -139,7 +139,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 ├── catalog/                   # Catálogo de datasets en YAML (skill data-governance)
 ├── config/
 │   ├── rules.yaml             # Reglas DQ01–DQ12 y umbrales
-│   ├── fields.yaml            # Campos del cliente (C01–C06)
+│   ├── fields.yaml            # Campos del cliente (LIT-01 a LIT-08)
 │   ├── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas (base de todos los entornos)
 │   └── environments/          # dev.yaml, staging.yaml, prod.yaml: lo que cambia en cada entorno
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
@@ -261,7 +261,7 @@ Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con tres 
 |---|---|
 | Última corrida | DQ Score, registros procesados, VALID / WARNING / INVALID y hace cuánto corrió |
 | Evolución de la calidad | DQ Score por corrida (meta 95%) y hallazgos por regla DQ01–DQ12 |
-| Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 6 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
+| Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 8 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
 | Calidad por campo y día | % de calidad por campo y día, y los últimos registros rechazados con su regla |
 
 Un segundo dashboard, **Flujo del ETL (Bronze · Silver · Gold)** ([`grafana/dashboards/flujo-etl.json`](grafana/dashboards/flujo-etl.json)), muestra cómo se mueve cada lote por las capas. Los dos dashboards están enlazados entre sí (botón arriba a la derecha).

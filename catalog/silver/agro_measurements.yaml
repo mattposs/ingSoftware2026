@@ -25,8 +25,8 @@ columns:
   data_type: string
   nullable: false
   null_percentage: 0.0
-  sample_value: C01
-  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+  sample_value: LIT-01
+  description: Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields).
 - name: latitude
   data_type: float64
   nullable: false

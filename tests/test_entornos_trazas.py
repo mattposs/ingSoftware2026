@@ -58,7 +58,7 @@ def _traces(records):
     df["_ingested_at"] = pd.Timestamp(NOW)
     df["_source_system"] = df["source"]
     rules = load_rules()
-    r = validate(df, rules, {"C01", "C02", "C03", "C04", "C05", "C06"}, now=NOW)
+    r = validate(df, rules, {f"LIT-0{i}" for i in range(1, 9)}, now=NOW)
     return build_traces(df, r.findings, rules, "abcdef12-0000", TZ, "dev", "agro", "measurements")
 
 
@@ -102,7 +102,7 @@ def test_la_imagen_docker_incluye_toda_la_configuracion():
 
 
 def test_rechazos_de_muestra_priorizan_reglas_de_valor():
-    recs = [reading(ts=None), reading(ts="2026-10-15T10:15:00Z", field_id="C99"),
+    recs = [reading(ts=None), reading(ts="2026-10-15T10:15:00Z", field_id="LIT-99"),
             reading(ts="2026-10-15T10:30:00Z", humidity=150)]
     traces, _ = _traces(recs)
     invalid = traces[traces["dq_status"] == "INVALID"]

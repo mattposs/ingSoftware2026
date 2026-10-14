@@ -16,7 +16,7 @@
 | `detected_at` | `datetime64[us, UTC]` | No | `2026-10-05 22:32:08.192404+00:00` | Instante UTC en que se detectó el hallazgo. |
 | `measured_at` | `datetime64[us, UTC]` | Sí (7.41%) | `2026-10-05 22:30:00+00:00` | Fecha y hora de la medición afectada (vacío si el timestamp era inválido). |
 | `source` | `str` | No | `iot_simulator` | Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones cada 15 min). |
-| `field_id` | `str` | No | `C04` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
+| `field_id` | `str` | No | `LIT-04` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
 | `variable` | `str` | Sí (13.58%) | `temperature` | Variable afectada (temperature, humidity, ...); vacío si la regla aplica al registro completo. |
 | `rule_id` | `str` | No | `DQ11` | Código de la regla incumplida (DQ01 a DQ12, ver config/rules.yaml). |
 | `rule_type` | `str` | No | `Completitud` | Tipo de regla: Completitud, Unicidad, Validez, Consistencia, Integridad o Anomalía. |

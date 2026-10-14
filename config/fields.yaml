@@ -1,10 +1,13 @@
-# Campos del cliente (Agropecuaria Los Tres Ombúes S.A., organización ficticia).
+# Campos del cliente (Grupo Agro del Litoral S.A., organización ficticia).
 # Fuente de verdad para DQ04 y para la tabla gold.fields (se sincroniza en cada corrida).
-# Coordenadas aproximadas en la zona núcleo pampeana.
+# Totales: 8 campos · 20.000 ha · 200 sensores. Cada sensor reporta cada 15 min (96 lecturas/día),
+# o sea 19.200 registros por día en total. Coordenadas de la localidad de cada campo.
 fields:
-  - {field_id: C01, nombre: La Aurora,     provincia: Buenos Aires, latitude: -34.05, longitude: -60.55, hectareas: 3200}
-  - {field_id: C02, nombre: El Ombú,       provincia: Buenos Aires, latitude: -33.72, longitude: -61.10, hectareas: 2800}
-  - {field_id: C03, nombre: San Isidro,    provincia: Santa Fe,     latitude: -33.10, longitude: -61.30, hectareas: 3100}
-  - {field_id: C04, nombre: Las Acacias,   provincia: Santa Fe,     latitude: -32.60, longitude: -61.90, hectareas: 2900}
-  - {field_id: C05, nombre: La Esperanza,  provincia: Córdoba,      latitude: -32.70, longitude: -62.60, hectareas: 3000}
-  - {field_id: C06, nombre: Don Tomás,     provincia: Córdoba,      latitude: -33.30, longitude: -62.80, hectareas: 3000}
+  - {field_id: LIT-01, localidad: Crespo,        provincia: Entre Ríos, latitude: -32.03, longitude: -60.31, hectareas: 2200, sensores: 24}
+  - {field_id: LIT-02, localidad: Gualeguaychú,  provincia: Entre Ríos, latitude: -33.01, longitude: -58.52, hectareas: 2500, sensores: 28}
+  - {field_id: LIT-03, localidad: Concordia,     provincia: Entre Ríos, latitude: -31.39, longitude: -58.02, hectareas: 1800, sensores: 20}
+  - {field_id: LIT-04, localidad: Rafaela,       provincia: Santa Fe,   latitude: -31.25, longitude: -61.49, hectareas: 3000, sensores: 32}
+  - {field_id: LIT-05, localidad: Venado Tuerto, provincia: Santa Fe,   latitude: -33.75, longitude: -61.97, hectareas: 2800, sensores: 30}
+  - {field_id: LIT-06, localidad: Reconquista,   provincia: Santa Fe,   latitude: -29.15, longitude: -59.65, hectareas: 2200, sensores: 22}
+  - {field_id: LIT-07, localidad: Marcos Juárez, provincia: Córdoba,    latitude: -32.70, longitude: -62.10, hectareas: 2800, sensores: 22}
+  - {field_id: LIT-08, localidad: Río Cuarto,    provincia: Córdoba,    latitude: -33.12, longitude: -64.35, hectareas: 2700, sensores: 22}

@@ -5,14 +5,14 @@
 **Ubicación / Destino:** `storage/staging/bronze/agro/iot_simulator/`  
 **Última Catalogación:** `2026-10-05T22:33:52.881591+00:00`  
 
-> Lecturas de las 6 estaciones IoT simuladas cada 15 minutos, con errores inyectados (append-only).
+> Lecturas de las estaciones IoT simuladas (una por campo, 8 campos) cada 15 minutos, con errores inyectados (append-only).
 
 ## Definición de Columnas
 
 | Columna | Tipo de Dato | Nulos observados | Ejemplo | Descripción |
 |---|---|---|---|---|
 | `timestamp` | `string` | Sí (1.04%) | `2026-10-05T22:30:00Z` | Fecha y hora de la medición. En Bronze es el texto crudo recibido; desde Silver, datetime UTC. |
-| `field_id` | `string` | No | `C01` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
+| `field_id` | `string` | No | `LIT-01` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
 | `latitude` | `float64` | No | `-34.05` | Latitud de la estación del campo, en grados decimales. |
 | `longitude` | `float64` | No | `-60.55` | Longitud de la estación del campo, en grados decimales. |
 | `temperature` | `float64` | No | `16.81` | Temperatura del aire a 2 m, en °C. |

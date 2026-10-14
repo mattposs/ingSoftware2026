@@ -16,7 +16,7 @@
 | `created_at` | `datetime64[us, UTC]` | No | `2026-10-05 22:32:08.482456+00:00` | Cuándo se guardó la traza. |
 | `dq_status` | `str` | No | `VALID` | Resultado de Data Quality: VALID (sin hallazgos) o WARNING (publicable pero marcado para revisión). |
 | `source` | `str` | No | `iot_simulator` | Fuente del dato: open_meteo (API horaria) o iot_simulator (estaciones cada 15 min). |
-| `field_id` | `str` | No | `C01` | Identificador del campo del cliente (C01 a C06, ver gold.fields). |
+| `field_id` | `str` | No | `LIT-01` | Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields). |
 | `measured_at` | `datetime64[us, UTC]` | No | `2026-10-05 22:30:00+00:00` | Fecha y hora de la medición afectada (vacío si el timestamp era inválido). |
 | `fecha_negocio` | `object` | Sí (25.0%) | `2026-10-05` | Día de Gold (hora local) al que aporta el registro; vacío si fue rechazado. |
-| `titulo` | `str` | No | `✔ VALID · C01 · iot_simulator · 2026-10-05T22:30:00Z` | Texto con el que se elige el registro en el dashboard «ETL paso a paso». |
+| `titulo` | `str` | No | `✔ VALID · LIT-01 · iot_simulator · 2026-10-05T22:30:00Z` | Texto con el que se elige el registro en el dashboard «ETL paso a paso». |

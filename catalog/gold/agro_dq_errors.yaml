@@ -42,8 +42,8 @@ columns:
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: C04
-  description: Identificador del campo del cliente (C01 a C06, ver gold.fields).
+  sample_value: LIT-04
+  description: Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields).
 - name: variable
   data_type: str
   nullable: true
