@@ -17,5 +17,5 @@ sources:
     frequency_minutes: 15
     initial_hours: 24      # ventana de la primera corrida (sin watermark)
     max_hours_per_run: 48  # tope para no generar semanas de datos de golpe
-    error_rate: 0.08       # ~8% de registros con errores (documento, sección 2.2)
+    error_rate: 0.14       # ~14% de registros con problemas (paso 2 de la adaptación; ver docs/decisiones.md D21)
     seed: null             # entero para corridas reproducibles

@@ -2,7 +2,7 @@
 iot_simulator.py
 Simulador de las estaciones IoT: una estación por campo (8 campos, ver config/fields.yaml), una lectura
 cada 15 minutos con 5 variables. No simula sensores individuales (24-32 por campo); ver docs/revision/paso-1.md.
-Inyecta errores realistas a una tasa configurable (~8%, documento sección 2.2) y deja
+Inyecta errores realistas a una tasa configurable (error_rate en config/pipeline.yaml, hoy ~14%) y deja
 registrado en `_sim_injected_error` qué se inyectó, para medir la detección de las reglas.
 """
 
