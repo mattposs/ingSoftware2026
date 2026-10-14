@@ -162,3 +162,13 @@ consultas probadas: 7 con error: 0
 2. **Columna `nombre` reemplazada por `localidad`** en `gold.fields` (la especificación no dice qué hacer con `nombre`, solo da localidad). Decisión mía, registrada en D20. Si preferís conservar `nombre`, hay que definir un nombre para cada campo.
 
 3. **Colores de LIT-07 y LIT-08 en Grafana** (`#e08a3c` y `#7a5fc7`): los elegí yo, porque la especificación no los define.
+
+## 6. Corrección posterior: el dashboard no se veía en DEV
+
+Lo reportaste después de entregar el paso. Causa: el filtro **Fuente** de `calidad-datos.json` era una lista fija con **Open-Meteo** como valor por defecto, y DEV tiene Open-Meteo desactivado (`config/environments/dev.yaml`), así que `agro_dev` solo tiene datos del simulador. Con ese filtro, todos los gráficos de DEV quedaban vacíos. STAGING y PROD tienen las dos fuentes, por eso se veían bien.
+
+Esto no lo detecté en la verificación del apartado 3 porque probé las consultas con la fuente reemplazada a mano, no con el valor por defecto del filtro. Debí haber mirado los datos de cada entorno.
+
+Arreglo: el filtro pasa a ser una consulta sobre el entorno elegido (`SELECT DISTINCT fuente FROM gold.daily_field_metrics`, con Open-Meteo primero). En DEV ofrece solo "Simulador IoT"; en STAGING y PROD, las dos, con Open-Meteo por defecto como antes.
+
+Verificado: la consulta del filtro devuelve `Simulador IoT` en `agro_dev` y las dos fuentes en `agro_prod`, y la API de Grafana (`/api/dashboards/uid/agro-calidad`) ya muestra la variable como tipo `query`. **No** abrí el dashboard en un navegador, así que falta que lo confirmes a ojo en DEV.

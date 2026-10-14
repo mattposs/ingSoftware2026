@@ -36,26 +36,17 @@
       {
         "name": "fuente",
         "label": "Fuente",
-        "type": "custom",
-        "query": "Open-Meteo : open_meteo, Simulador IoT : iot_simulator",
-        "current": {
-          "text": "Open-Meteo",
-          "value": "open_meteo"
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "${entorno}"
         },
-        "options": [
-          {
-            "text": "Open-Meteo",
-            "value": "open_meteo",
-            "selected": true
-          },
-          {
-            "text": "Simulador IoT",
-            "value": "iot_simulator",
-            "selected": false
-          }
-        ],
+        "query": "SELECT CASE fuente WHEN 'open_meteo' THEN 'Open-Meteo' ELSE 'Simulador IoT' END AS __text, fuente AS __value FROM (SELECT DISTINCT fuente FROM gold.daily_field_metrics) s ORDER BY fuente DESC",
+        "definition": "SELECT CASE fuente WHEN 'open_meteo' THEN 'Open-Meteo' ELSE 'Simulador IoT' END AS __text, fuente AS __value FROM (SELECT DISTINCT fuente FROM gold.daily_field_metrics) s ORDER BY fuente DESC",
+        "refresh": 1,
         "multi": false,
-        "includeAll": false
+        "includeAll": false,
+        "sort": 0
       },
       {
         "name": "campo",
