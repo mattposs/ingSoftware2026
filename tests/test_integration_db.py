@@ -58,6 +58,10 @@ def test_corrida_completa_con_simulador(engine):
     assert run["status"] == "ok"
     assert run["run_start"] < run["run_end"]  # run_start es el inicio de la ingesta, no de Silver
     assert run["total"] == run["valid"] + run["warning"] + run["invalid"]
+    # D2: score estricto (solo VALID) y % utilizable (VALID + WARNING), ambos guardados.
+    assert float(run["dq_score"]) == pytest.approx(run["valid"] / run["total"] * 100, abs=0.01)
+    assert float(run["pct_utilizable"]) == pytest.approx((run["valid"] + run["warning"]) / run["total"] * 100, abs=0.01)
+    assert run["pct_utilizable"] >= run["dq_score"]
     assert gold_rows > 0 and errors > 0
 
     # El flujo por capas cierra: lo que entra a Bronze sale por Silver o por Quarantine.

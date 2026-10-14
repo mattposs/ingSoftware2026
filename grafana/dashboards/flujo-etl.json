@@ -773,7 +773,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT r.run_start AS \"Inicio\", sum(m.rows) FILTER (WHERE m.layer = 'bronze') AS \"Bronze\", sum(m.rows) FILTER (WHERE m.layer = 'silver') AS \"Silver\", sum(m.rows) FILTER (WHERE m.layer = 'quarantine') AS \"Quarantine\", sum(m.rows) FILTER (WHERE m.layer = 'gold') AS \"Gold\", r.dq_score AS \"DQ Score\" FROM gold.dq_run_metrics r JOIN gold.pipeline_layer_metrics m USING (_batch_id) GROUP BY r._batch_id, r.run_start, r.dq_score, r.status ORDER BY r.run_start DESC LIMIT 30"
+          "rawSql": "SELECT r.run_start AS \"Inicio\", sum(m.rows) FILTER (WHERE m.layer = 'bronze') AS \"Bronze\", sum(m.rows) FILTER (WHERE m.layer = 'silver') AS \"Silver\", sum(m.rows) FILTER (WHERE m.layer = 'quarantine') AS \"Quarantine\", sum(m.rows) FILTER (WHERE m.layer = 'gold') AS \"Gold\", r.dq_score AS \"DQ Score (estricto)\", r.pct_utilizable AS \"% utilizable\" FROM gold.dq_run_metrics r JOIN gold.pipeline_layer_metrics m USING (_batch_id) GROUP BY r._batch_id, r.run_start, r.dq_score, r.pct_utilizable, r.status ORDER BY r.run_start DESC LIMIT 30"
         }
       ],
       "fieldConfig": {

@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS gold.daily_field_metrics (
     humedad_suelo_promedio      NUMERIC(6, 3),
     humedad_ambiental_promedio  NUMERIC(6, 3),
     cantidad_mediciones         INTEGER      NOT NULL,
-    porcentaje_calidad          NUMERIC(5, 2) NOT NULL,
+    porcentaje_calidad          NUMERIC(5, 2) NOT NULL,   -- estricto: VALID / (publicados + rechazados) × 100
     _batch_id                   TEXT         NOT NULL,
     _updated_at                 TIMESTAMPTZ  NOT NULL DEFAULT now(),
     PRIMARY KEY (fecha, field_id, fuente)
@@ -63,8 +63,17 @@ CREATE TABLE IF NOT EXISTS gold.dq_run_metrics (
     valid      INTEGER,
     warning    INTEGER,
     invalid    INTEGER,
-    dq_score   NUMERIC(5, 2)
+    dq_score   NUMERIC(5, 2),   -- estricto: VALID / total × 100
+    pct_utilizable NUMERIC(5, 2) -- (VALID + WARNING) / total × 100
 );
+
+-- Migración (D2, paso 3): bases creadas antes de separar el score estricto del % utilizable.
+-- Idempotente: ambos valores se derivan de los contadores de cada corrida.
+ALTER TABLE gold.dq_run_metrics ADD COLUMN IF NOT EXISTS pct_utilizable NUMERIC(5, 2);
+UPDATE gold.dq_run_metrics
+SET dq_score = round(valid::numeric / total * 100, 2),
+    pct_utilizable = round((valid + warning)::numeric / total * 100, 2)
+WHERE total > 0;
 
 -- Registro de errores detectados (RF08): rechazos y warnings, con la identificación del registro.
 CREATE TABLE IF NOT EXISTS gold.dq_errors (

@@ -1,7 +1,7 @@
 """
 quality.py
 Registro de la corrida (gold.dq_run_metrics) y de los errores detectados (gold.dq_errors).
-Data Quality Score = (VALID + WARNING) / total × 100 (RF07, decisión D2).
+Data Quality Score estricto = VALID / total × 100 y % utilizable = (VALID + WARNING) / total × 100 (RF07, decisión D2).
 """
 
 from datetime import UTC, datetime
@@ -95,14 +95,14 @@ def record_quality(engine: Engine, result: ValidationResult, rules: dict, batch_
             text(
                 """
                 UPDATE gold.dq_run_metrics
-                SET total = :t, valid = :v, warning = :w, invalid = :i, dq_score = :s
+                SET total = :t, valid = :v, warning = :w, invalid = :i, dq_score = :s, pct_utilizable = :u
                 WHERE _batch_id = :b
                 """
             ),
             {"b": batch_id, "t": result.total, "v": result.valid, "w": result.warning,
-             "i": result.invalid, "s": result.dq_score},
+             "i": result.invalid, "s": result.dq_score, "u": result.pct_utilizable},
         )
     print(
         f"[DQ] total={result.total} valid={result.valid} warning={result.warning} "
-        f"invalid={result.invalid} score={result.dq_score}% errores={len(errors)}"
+        f"invalid={result.invalid} score={result.dq_score}% utilizable={result.pct_utilizable}% errores={len(errors)}"
     )

@@ -49,7 +49,7 @@ Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo 
 | 100% de rechazos en quarantine con motivo; Gold sin inválidos | `_rejection_reasons` en quarantine; `test_gold_no_contiene_registros_invalidos` |
 | ≥ 12 tests de reglas y ≥ 80% de cobertura en validación | `tests/test_rules.py`; el CI falla si la cobertura de `src/validation` baja de 80% |
 | 100% de los cambios a `main` pasan por GitHub Actions | `.github/workflows/ci.yml` + *branch protection* (ver [CI/CD](#cicd)) |
-| DQ Score por campo y día; dashboard solo sobre Gold | `gold.daily_field_metrics.porcentaje_calidad`, `gold.dq_run_metrics.dq_score`, usuario `dashboard` de solo lectura |
+| DQ Score por campo y día; dashboard solo sobre Gold | `gold.daily_field_metrics.porcentaje_calidad` (estricto), `gold.dq_run_metrics.dq_score` (estricto) y `pct_utilizable`, usuario `dashboard` de solo lectura |
 | Corrida de un día de datos en < 5 minutos | El pipeline informa la duración al terminar (≈ 20 s en local) |
 
 ## Alcance
@@ -95,7 +95,7 @@ flowchart TD
 
 **Reproceso:** si cambia una regla, `python -m src.main --reprocess <batch_id>` regenera Silver, Quarantine y Gold desde Bronze, sin volver a llamar a la API.
 
-**Data Quality Score** = (VALID + WARNING) / total × 100. Las decisiones de diseño están en [`docs/decisiones.md`](docs/decisiones.md).
+**Data Quality Score (estricto)** = VALID / total × 100; **% utilizable** = (VALID + WARNING) / total × 100. Las decisiones de diseño están en [`docs/decisiones.md`](docs/decisiones.md).
 
 ## Reglas de Data Quality
 
@@ -259,8 +259,8 @@ Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con tres 
 
 | Sección | Qué muestra |
 |---|---|
-| Última corrida | DQ Score, registros procesados, VALID / WARNING / INVALID y hace cuánto corrió |
-| Evolución de la calidad | DQ Score por corrida (meta 95%) y hallazgos por regla DQ01–DQ12 |
+| Última corrida | DQ Score estricto, % utilizable, registros procesados, VALID / WARNING / INVALID y hace cuánto corrió |
+| Evolución de la calidad | DQ Score estricto y % utilizable por corrida (meta 95%) y hallazgos por regla DQ01–DQ12 |
 | Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 8 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
 | Calidad por campo y día | % de calidad por campo y día, y los últimos registros rechazados con su regla |
 
