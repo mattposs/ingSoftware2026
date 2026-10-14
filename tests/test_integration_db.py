@@ -10,8 +10,12 @@ import pytest
 from sqlalchemy import text
 
 from src import pipeline
-from src.common import db
+from src.common import db, lake
 from src.common.state import WatermarkStore
+from src.config import get_settings, load_pipeline
+from src.transformation import gold
+from src.validation.engine import parse_timestamps
+from tests.conftest import NOW, bronze, reading
 
 pytestmark = pytest.mark.db
 
@@ -93,8 +97,66 @@ def test_corrida_completa_con_simulador(engine):
 
 def test_gold_no_tiene_registros_invalidos(engine):
     pipeline.run_all(engine, sources=["iot_simulator"])
+    cfg = load_pipeline()
+    settings = get_settings()
     with engine.connect() as conn:
         df = pd.read_sql("SELECT * FROM gold.daily_field_metrics", conn)
+        known_fields = set(pd.read_sql("SELECT field_id FROM gold.fields", conn)["field_id"])
+    assert not df.empty
+
+    # Valores dentro de los rangos físicos.
     assert df["humedad_ambiental_promedio"].between(0, 100).all()
     assert (df["precipitacion_total"] >= 0).all()
     assert df["temperatura_promedio"].between(-40, 60).all()
+
+    # Todo field_id de Gold existe en gold.fields.
+    assert set(df["field_id"]) <= known_fields
+
+    # (fecha, field_id, fuente) es única.
+    assert not df.duplicated(subset=gold.GOLD_KEYS).any()
+
+    # Ningún registro de Quarantine llegó a Silver, y Gold cuenta exactamente lo que hay en Silver.
+    # Se excluyen los rechazados solo por DQ05: un duplicado comparte la clave de su original (que sí es válido).
+    domain, entity, tz = cfg["domain"], cfg["entity"], cfg["business_timezone"]
+    silver = lake.read_layer(settings.storage_path, "silver", domain, entity)
+    quarantine = lake.read_layer(settings.storage_path, "quarantine", domain, entity)
+    assert not silver.empty and not quarantine.empty
+    rejected = quarantine[quarantine["_rejection_reasons"] != "DQ05"]
+    rejected = rejected.assign(timestamp=parse_timestamps(rejected["timestamp"]))
+    rejected = rejected[rejected["timestamp"].notna() & rejected["field_id"].notna()]
+    identity = ["source", "field_id", "timestamp"]
+    assert silver.merge(rejected[identity].drop_duplicates(), on=identity).empty
+
+    expected = (silver.assign(fecha=gold._local_date(silver["timestamp"], tz), fuente=silver["source"])
+                .groupby(gold.GOLD_KEYS).size().rename("en_silver").reset_index())
+    check = df.merge(expected, on=gold.GOLD_KEYS, how="left")
+    assert (check["cantidad_mediciones"] == check["en_silver"]).all()
+
+
+def test_precipitacion_duplicada_no_se_suma_y_el_segundo_registro_va_a_quarantine(engine):
+    cfg, settings = load_pipeline(), get_settings()
+    batch = "lote-con-duplicado"
+    original = reading(precipitation=5.0, _batch_id=batch)
+    df = lake.enrich_with_lineage(bronze([original, dict(original)]).drop(columns="_batch_id"),
+                                  source_system="iot_simulator", batch_id=batch)
+    lake.write_parquet(df, settings.storage_path, "bronze", cfg["domain"], "iot_simulator", batch)
+
+    pipeline.run_silver(engine, batch, now=NOW)
+    pipeline.run_gold(engine, batch)
+
+    with engine.connect() as conn:
+        daily = pd.read_sql("SELECT * FROM gold.daily_field_metrics", conn)
+        errors = pd.read_sql(text("SELECT rule_id, action FROM gold.dq_errors WHERE _batch_id = :b"), conn,
+                             params={"b": batch})
+    assert len(daily) == 1
+    assert float(daily.loc[0, "precipitacion_total"]) == 5.0       # no 10.0: el duplicado no se suma
+    assert daily.loc[0, "cantidad_mediciones"] == 1
+    assert float(daily.loc[0, "porcentaje_calidad"]) == 50.0      # 1 VALID de 2 (el duplicado cuenta como rechazado)
+
+    silver = lake.read_layer(settings.storage_path, "silver", cfg["domain"], cfg["entity"], batch)
+    quarantine = lake.read_layer(settings.storage_path, "quarantine", cfg["domain"], cfg["entity"], batch)
+    assert len(silver) == 1
+    assert len(quarantine) == 1
+    assert quarantine.loc[0, "_rejection_reasons"] == "DQ05"
+    assert quarantine.loc[0, "precipitation"] == 5.0
+    assert list(zip(errors["rule_id"], errors["action"], strict=True)) == [("DQ05", "REJECT")]
