@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador del Pipeline DataOps</title>
+<style>
+  :root{
+    --bg:#eef2f7; --panel:#ffffff; --ink:#1d2733; --muted:#5b6b7b; --line:#c9d3de;
+    --ok:#1f9d55; --warn:#e0a100; --bad:#d64545; --info:#2b7bd6; --off:#aab4bf; --brand:#1f5fa8;
+    --grid:#dfe6ee;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141a21; --panel:#1c242d; --ink:#e6edf3; --muted:#9aa9b8; --line:#33414f;
+      --grid:#212b36; --off:#56646f;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;min-height:100vh}
+  header{background:var(--brand);color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  header h1{font-size:17px;margin:0;font-weight:650}
+  header .sub{opacity:.85;font-size:12.5px}
+  .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  .tab{background:rgba(255,255,255,.14);border:0;color:#fff;padding:7px 14px;border-radius:6px 6px 0 0;cursor:pointer;font:inherit}
+  .tab[aria-selected="true"]{background:var(--panel);color:var(--brand);font-weight:650}
+  main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:10px;padding:10px;min-height:0}
+  @media (max-width:1000px){ main{grid-template-columns:1fr} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-height:0}
+  .card h2{font-size:13px;margin:0;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .canvas-wrap{position:relative;overflow:auto}
+  svg#net{display:block;width:100%;min-width:900px;height:auto;background:
+      linear-gradient(var(--grid) 1px,transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/40px 40px, var(--panel)}
+  .dev{cursor:pointer}
+  .dev .box{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+  .dev:hover .box,.dev:focus .box{stroke:var(--info);stroke-width:2.5}
+  .dev:focus{outline:none}
+  .dev.off{opacity:.38;filter:grayscale(1)}
+  .dev.at .box{stroke:var(--info);stroke-width:3.5}
+  .dev.at.s-OK .box{stroke:var(--ok)} .dev.at.s-WARNING .box{stroke:var(--warn)} .dev.at.s-REJECT .box{stroke:var(--bad)}
+  .dev text{fill:var(--ink);font-size:15px;text-anchor:middle;pointer-events:none}
+  .dev text.sub{fill:var(--muted);font-size:11.5px}
+  .link{stroke:var(--off);stroke-width:2.5;fill:none}
+  .link.ctl{stroke-dasharray:6 5;stroke-width:2}
+  .link.on{stroke:var(--ok)}
+  .link.pulse{stroke:var(--info);stroke-width:3.5}
+  .lamp{fill:var(--off)} .lamp.on{fill:var(--ok)}
+  .zone{fill:none;stroke:var(--line);stroke-dasharray:3 5;stroke-width:1.5}
+  .zone-t{fill:var(--muted);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+  #pdu{pointer-events:none}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
+  button.btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit}
+  button.btn:hover{border-color:var(--info)} button.btn:disabled{opacity:.45;cursor:default}
+  button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .grow{flex:1}
+  label.sp{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12.5px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);align-items:center}
+  .chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:5px 10px;border-radius:999px;cursor:pointer;font:inherit;font-size:12.5px;display:flex;gap:6px;align-items:center}
+  .chip[aria-pressed="true"]{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand);font-weight:600}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .side{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .events{overflow:auto;max-height:260px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600}
+  tr.ev{cursor:pointer} tr.ev:hover{background:rgba(43,123,214,.08)} tr.ev.cur{background:rgba(43,123,214,.16)}
+  .badge{font-size:11px;padding:1px 7px;border-radius:999px;color:#fff;white-space:nowrap}
+  .b-OK{background:var(--ok)} .b-WARNING{background:var(--warn)} .b-REJECT{background:var(--bad)} .b-INFO{background:var(--info)}
+  .detail{padding:10px 12px;overflow:auto;flex:1;min-height:150px}
+  .detail h3{margin:0 0 4px;font-size:15px}
+  .detail p{margin:6px 0}
+  pre{background:#0f1720;color:#d6e2ee;padding:10px;border-radius:6px;overflow:auto;font:12px/1.5 Consolas,Menlo,monospace;margin:8px 0;white-space:pre-wrap}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px;margin:8px 0}
+  .kv b{color:var(--muted);font-weight:600}
+  .rules td.r-OK{color:var(--ok)} .rules td.r-WARNING{color:var(--warn);font-weight:600} .rules td.r-REJECT{color:var(--bad);font-weight:700}
+  .hint{color:var(--muted);font-size:12.5px}
+  dialog{border:1px solid var(--line);border-radius:10px;padding:0;background:var(--panel);color:var(--ink);width:min(720px,94vw);max-height:90vh}
+  dialog::backdrop{background:rgba(10,20,30,.5)}
+  .dh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--brand);color:#fff}
+  .dh h3{margin:0;font-size:15px;flex:1}
+  .dh button{background:none;border:0;color:#fff;font-size:20px;cursor:pointer}
+  .dtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;background:var(--bg)}
+  .dtab{border:0;background:none;color:var(--muted);padding:8px 12px;cursor:pointer;font:inherit;border-bottom:3px solid transparent}
+  .dtab[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand);font-weight:650}
+  .dbody{padding:12px 16px;overflow:auto;max-height:62vh}
+  form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  form.f label{display:flex;flex-direction:column;font-size:12.5px;color:var(--muted);gap:3px}
+  form.f input,form.f select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit}
+  form.f .full{grid-column:1/-1}
+  form.f .chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;padding:6px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+  .sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Simulador del Pipeline DataOps · estilo Packet Tracer</h1>
+    <div class="sub">Grupo Agro del Litoral S.A. · 8 campos · 200 sensores · Bronze → Silver / Quarantine → Gold → Grafana</div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Modo">
+    <button class="tab" role="tab" id="tab-run" aria-selected="true">Simulación: viaje de un registro</button>
+    <button class="tab" role="tab" id="tab-setup" aria-selected="false">Puesta en marcha: cómo se crea todo</button>
+  </div>
+</header>
+
+<main>
+  <section class="card" aria-label="Topología">
+    <div class="chips" id="pduBar"></div>
+    <div class="canvas-wrap">
+      <svg id="net" viewBox="0 0 1400 740" role="img" aria-label="Topología lógica del pipeline"></svg>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--ok)"></span> VALID / OK</span>
+      <span><span class="dot" style="background:var(--warn)"></span> WARNING (se publica con aviso)</span>
+      <span><span class="dot" style="background:var(--bad)"></span> INVALID / REJECT (va a Quarantine)</span>
+      <span>Línea continua: datos · Línea punteada: control o configuración · Clic en un dispositivo para abrir su ventana de configuración</span>
+    </div>
+    <div class="controls">
+      <button class="btn" id="bReset" title="Volver al inicio">⏮ Reiniciar</button>
+      <button class="btn" id="bBack" title="Paso anterior">◀ Atrás</button>
+      <button class="btn primary" id="bStep" title="Avanzar un evento">⏭ Capturar / Avanzar</button>
+      <button class="btn" id="bPlay" title="Reproducir automáticamente">▶ Auto</button>
+      <label class="sp">Velocidad <input type="range" id="speed" min="1" max="5" value="3"></label>
+      <span class="grow"></span>
+      <span class="hint" id="progress">Evento 0 de 0</span>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="card" style="min-height:0">
+      <h2>Lista de eventos</h2>
+      <div class="events"><table><thead><tr><th>#</th><th>Desde</th><th>En</th><th>Tipo</th><th></th></tr></thead><tbody id="evBody"></tbody></table></div>
+    </section>
+    <section class="card" style="flex:1">
+      <h2>Información del evento</h2>
+      <div class="detail" id="detail"><p class="hint">Elegí un paquete arriba y apretá <b>Capturar / Avanzar</b> para seguirlo paso a paso, o <b>Auto</b> para verlo correr solo.</p></div>
+    </section>
+  </aside>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="dh"><h3 id="dlgTitle"></h3><button id="dlgX" aria-label="Cerrar">×</button></div>
+  <div class="dtabs" role="tablist" id="dlgTabs"></div>
+  <div class="dbody" id="dlgBody"></div>
+</dialog>
+
+<dialog id="dlgNew" aria-labelledby="newTitle">
+  <div class="dh"><h3 id="newTitle">Crear un paquete (registro) propio</h3><button id="newX" aria-label="Cerrar">×</button></div>
+  <div class="dbody">
+    <p class="hint">Cada paquete es una lectura de un sensor con sus 5 variables. Cambiá los valores y mirá qué regla lo detiene.</p>
+    <form class="f" id="newForm" method="dialog">
+      <label>Campo (field_id)<input name="field_id" value="LIT-04" placeholder="LIT-01 a LIT-08"></label>
+      <label>Timestamp (UTC)<input name="timestamp" value="2026-10-19T14:45:00Z" placeholder="vacío = nulo"></label>
+      <label>Temperatura<input name="temperature" type="number" step="0.1" value="22.4"></label>
+      <label>Unidad de temperatura<select name="temperature_unit"><option>°C</option><option>°F</option></select></label>
+      <label>Humedad ambiental (%)<input name="humidity" type="number" step="0.1" value="61"></label>
+      <label>Humedad del suelo (m³/m³)<input name="soil_moisture" type="number" step="0.001" value="0.31"></label>
+      <label>Precipitación (mm)<input name="precipitation" type="number" step="0.1" value="0"></label>
+      <label>Viento (km/h)<input name="wind_speed" type="number" step="0.1" value="12"></label>
+      <label>Fuente<select name="source"><option value="iot_simulator">Simulador IoT</option><option value="open_meteo">Open-Meteo</option></select></label>
+      <label class="chk full"><input type="checkbox" name="dup"> Es un duplicado de una lectura que ya llegó (DQ05)</label>
+      <label class="chk full"><input type="checkbox" name="gap"> Faltó la lectura anterior: hueco de 30 min o más (DQ11)</label>
+      <label class="chk full"><input type="checkbox" name="spike"> Salto brusco respecto de la lectura anterior (DQ12)</label>
+      <div class="full" style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" id="newCancel">Cancelar</button><button type="submit" class="btn primary">Crear y simular</button></div>
+    </form>
+  </div>
+</dialog>
+
+<script id="logic">
+/* ====== Lógica pura (se puede probar sin navegador) ====== */
+const FIELD_IDS = ["LIT-01","LIT-02","LIT-03","LIT-04","LIT-05","LIT-06","LIT-07","LIT-08"];
+const REF_NOW = Date.parse("2026-10-19T15:00:00Z");   // "ahora" de la demo
+const RULE_NAMES = {
+  DQ01:"timestamp obligatorio", DQ02:"field_id obligatorio", DQ03:"timestamp con formato válido",
+  DQ04:"el campo existe", DQ05:"sin duplicados", DQ06:"unidades esperadas", DQ07:"humedad entre 0 y 100 %",
+  DQ08:"precipitación ≥ 0", DQ09:"temperatura en rango", DQ10:"humedad del suelo en rango",
+  DQ11:"sin huecos sin datos", DQ12:"sin saltos anormales"
+};
+
+function blank(v){ return v === null || v === undefined || String(v).trim() === ""; }
+
+function evalRules(r){
+  const out = [];
+  const add = (id, result, detalle) => out.push({id, name:RULE_NAMES[id], result, detalle});
+  // Tanda 1: identificación
+  add("DQ01", blank(r.timestamp) ? "REJECT" : "OK", blank(r.timestamp) ? "timestamp nulo o vacío" : "tiene timestamp");
+  add("DQ02", blank(r.field_id) ? "REJECT" : "OK", blank(r.field_id) ? "field_id nulo o vacío" : "tiene field_id");
+  let d3 = ["OK","formato ISO 8601 correcto"];
+  if (!blank(r.timestamp)){
+    const t = Date.parse(r.timestamp);
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})?$/.test(r.timestamp) || isNaN(t)) d3 = ["REJECT","no es ISO 8601"];
+    else if (t > REF_NOW + 10*60000) d3 = ["REJECT","timestamp en el futuro (tolerancia 10 min)"];
+    else if (t < Date.parse("2000-01-01T00:00:00Z")) d3 = ["REJECT","anterior al año 2000"];
+  } else d3 = ["OK","no aplica (ya lo frena DQ01)"];
+  add("DQ03", d3[0], d3[1]);
+  const fieldBlank = blank(r.field_id);
+  add("DQ04", !fieldBlank && !FIELD_IDS.includes(r.field_id) ? "REJECT" : "OK",
+      !fieldBlank && !FIELD_IDS.includes(r.field_id) ? "field_id inexistente" : "campo conocido");
+  add("DQ05", r.dup ? "REJECT" : "OK", r.dup ? "ya llegó (misma fuente, campo y timestamp); se conserva el primero" : "primera vez que llega");
+  // Tanda 2: valores
+  const unitOk = r.temperature_unit === "°C";
+  add("DQ06", unitOk ? "OK" : "REJECT", unitOk ? "°C, %, m³/m³, mm, km/h" : "temperatura en " + r.temperature_unit + " (se espera °C)");
+  const h = Number(r.humidity);
+  add("DQ07", h < 0 || h > 100 ? "REJECT" : "OK", h < 0 || h > 100 ? "humedad " + h + " % fuera de [0, 100]" : "humedad " + h + " % dentro de [0, 100]");
+  const p = Number(r.precipitation);
+  add("DQ08", p < 0 ? "REJECT" : "OK", p < 0 ? "precipitación negativa" : "precipitación " + p + " mm");
+  const te = Number(r.temperature);
+  let d9;
+  if (!unitOk) d9 = ["OK","no se evalúa: la unidad ya fue rechazada (DQ06)"];
+  else if (te < -40 || te > 60) d9 = ["REJECT","fuera del rango físico [-40, 60] °C"];
+  else if (te < -15 || te > 45) d9 = ["WARNING","fuera del rango esperado [-15, 45] °C (se publica con aviso)"];
+  else d9 = ["OK", te + " °C dentro de [-15, 45]"];
+  add("DQ09", d9[0], d9[1]);
+  const so = Number(r.soil_moisture);
+  let d10;
+  if (so < 0 || so > 1) d10 = ["REJECT","fuera del rango físico [0, 1]"];
+  else if (so < 0.02 || so > 0.60) d10 = ["WARNING","fuera del rango esperado [0,02, 0,60] (se publica con aviso)"];
+  else d10 = ["OK", so + " m³/m³ dentro de [0,02, 0,60]"];
+  add("DQ10", d10[0], d10[1]);
+  // Tanda 3: secuencia (solo si el registro se pudo identificar y no fue rechazado antes)
+  const rejectedBefore = out.some(o => o.result === "REJECT");
+  add("DQ11", !rejectedBefore && r.gap ? "WARNING" : "OK",
+      rejectedBefore ? "no se compara: el registro ya fue rechazado" : (r.gap ? "hueco de 30 min o más con la lectura anterior" : "lecturas consecutivas"));
+  add("DQ12", !rejectedBefore && r.spike ? "WARNING" : "OK",
+      rejectedBefore ? "no se compara: el registro ya fue rechazado" : (r.spike ? "cambio de más de 8 °C por hora" : "cambio normal"));
+  return out;
+}
+
+function classify(rules){
+  if (rules.some(x => x.result === "REJECT")) return "INVALID";
+  if (rules.some(x => x.result === "WARNING")) return "WARNING";
+  return "VALID";
+}
+
+// Ejemplo del porcentaje diario de Gold: 95 lecturas VALID previas del mismo día, campo y fuente.
+function goldImpact(status){
+  const before = {valid:95, pub:95, rej:0};
+  const after = {valid: before.valid + (status === "VALID" ? 1 : 0),
+                 pub: before.pub + (status === "INVALID" ? 0 : 1),
+                 rej: before.rej + (status === "INVALID" ? 1 : 0)};
+  const pct = x => Math.round(x.valid / (x.pub + x.rej) * 10000) / 100;
+  return {before, after, pctBefore: pct(before), pctAfter: pct(after)};
+}
+
+const ST_LABEL = {VALID:"OK", WARNING:"WARNING", INVALID:"REJECT"};
+
+function buildRun(pdu){
+  const r = pdu.rec, rules = evalRules(r), status = classify(rules);
+  const rejected = rules.filter(x => x.result === "REJECT"), warned = rules.filter(x => x.result === "WARNING");
+  const src = r.source === "open_meteo" ? "open_meteo" : "iot_simulator";
+  const tanda = (from, to) => rules.filter(x => { const n = +x.id.slice(2); return n >= from && n <= to; });
+  const resumen = list => list.filter(x => x.result !== "OK").map(x => x.id + " " + x.result).join(", ") || "todas OK";
+  const g = goldImpact(status);
+  const steps = [];
+  steps.push({from:"sched", to:"extract", type:"Disparo", status:"OK", title:"El scheduler arranca una corrida",
+    text:"Cada 900 segundos (15 min, la frecuencia de los sensores) el scheduler llama a pipeline.run_all(). Si una corrida falla, se registra y la siguiente se ejecuta igual.",
+    file:"src/scheduler.py", code:"while True:\n    pipeline.run_all(engine)\n    time.sleep(interval)"});
+  steps.push({from:"extract", to:"state", type:"Consulta", status:"OK", title:"Se pide el watermark de cada fuente",
+    text:"El pipeline es incremental: pregunta hasta dónde procesó la última vez para traer solo datos nuevos. La ventana es (watermark, ahora].",
+    file:"src/common/state.py", code:"SELECT watermark FROM etl.watermarks\nWHERE domain = 'agro' AND entity = '" + src + "'"});
+  steps.push({from:"state", to:"extract", type:"Respuesta", status:"OK", title:"Vuelve la ventana a pedir",
+    text:"Con el watermark se calcula la ventana. Para el simulador termina en el último cuarto de hora cumplido; para Open-Meteo, en hoy menos 5 días (la API publica con retraso).",
+    file:"src/ingestion/iot_simulator.py · open_meteo.py", code:"win = window_fn(state.get(domain, source), now, src_cfg)"});
+  steps.push({from: src === "open_meteo" ? "meteo" : "iot", to:"extract", type:"Lectura cruda", status:"OK", title:"Llega la lectura de la fuente",
+    text: src === "open_meteo"
+      ? "Open-Meteo entrega datos horarios en JSON. Si la llamada falla, reintenta hasta 3 veces esperando 2 y 4 segundos entre intentos."
+      : "El simulador genera una lectura por campo cada 15 minutos con las 5 variables y, a propósito, inyecta errores (14 % en STAGING y PROD, 20 % en DEV).",
+    file: src === "open_meteo" ? "src/ingestion/open_meteo.py" : "src/ingestion/iot_simulator.py",
+    record:"raw"});
+  steps.push({from:"extract", to:"bronze", type:"Escritura", status:"OK", title:"Bronze: se guarda tal cual llegó, con linaje",
+    text:"Se agregan tres columnas de linaje (_batch_id, _ingested_at, _source_system) y se escribe un Parquet. Bronze es append-only: un lote nunca se reescribe. Después recién avanza el watermark.",
+    file:"src/common/lake.py", code:"df = lake.enrich_with_lineage(df, source_system, batch_id)\nlake.write_parquet(df, ..., 'bronze', ...)\nstate.set(domain, source, win[1], batch_id)",
+    record:"bronze"});
+  steps.push({from:"bronze", to:"dq", type:"Lectura del lote", status:"OK", title:"Silver: se lee el lote y el histórico",
+    text:"run_silver lee el lote de Bronze y el Silver anterior. El histórico sirve para las reglas que comparan con la lectura previa (duplicados, huecos y saltos), porque esa lectura suele estar en otro lote.",
+    file:"src/pipeline.py", code:"batch = pd.concat([lake.read_layer(..., 'bronze', ...)])\ncontext = lake.read_layer(..., 'silver', ...)\nresult = validate(batch, rules, field_ids, context=context)"});
+  const t1 = tanda(1,5), t2 = tanda(6,10), t3 = tanda(11,12);
+  const st = list => list.some(x => x.result === "REJECT") ? "REJECT" : list.some(x => x.result === "WARNING") ? "WARNING" : "OK";
+  steps.push({from:"dq", to:"dq", type:"Tanda 1", status:st(t1), title:"Tanda 1 · identificación (DQ01 a DQ05)",
+    text:"¿Se puede identificar el registro? Sin fecha o sin campo no se puede usar. Resultado: " + resumen(t1) + ".", rules:t1,
+    file:"src/validation/engine.py"});
+  steps.push({from:"dq", to:"dq", type:"Tanda 2", status:st(t2), title:"Tanda 2 · valores (DQ06 a DQ10)",
+    text:"Unidades y rangos. Algunas reglas solo avisan (WARNING) y otras rechazan (REJECT). Resultado: " + resumen(t2) + ".", rules:t2,
+    file:"src/validation/engine.py"});
+  steps.push({from:"dq", to:"dq", type:"Tanda 3", status:st(t3), title:"Tanda 3 · secuencia (DQ11 y DQ12)",
+    text:"Se compara con la lectura anterior del mismo campo. Solo se usan registros no rechazados como referencia. Resultado: " + resumen(t3) + ".", rules:t3,
+    file:"src/validation/engine.py"});
+  steps.push({from:"dq", to:"dq", type:"Clasificación", status: ST_LABEL[status],
+    title:"Veredicto: " + status,
+    text: status === "INVALID"
+      ? "Se rechazó por " + rejected.map(x => x.id).join(" + ") + ". Un rechazo en una sola variable invalida el registro COMPLETO: las otras variables, aunque estén bien, no llegan a Silver ni a Gold."
+      : status === "WARNING"
+        ? "No se rechazó, pero tiene aviso en " + warned.map(x => x.id).join(" + ") + ". Se publica en Silver marcado como WARNING; en el score estricto no cuenta como limpio."
+        : "Pasó las 12 reglas. Es VALID: cuenta en el score estricto y en el % utilizable.",
+    file:"src/validation/engine.py", code:"INVALID si hay al menos un REJECT\nWARNING si solo hay avisos\nVALID si no hay hallazgos", record:"final"});
+  if (status === "INVALID"){
+    steps.push({from:"dq", to:"quar", type:"Rechazo", status:"REJECT", title:"Quarantine: se aparta con el motivo",
+      text:"El registro va a Quarantine tal como llegó de Bronze, con _rejection_reasons = " + rejected.map(x => x.id).join(";") + " y la fecha del rechazo. Nunca se descarta en silencio.",
+      file:"src/validation/engine.py (_classify)", code:"quarantine['_rejection_reasons'] = '" + rejected.map(x => x.id).join(";") + "'", record:"quarantine"});
+    steps.push({from:"quar", to:"gold", type:"Métricas", status:"WARNING", title:"Gold: no entra a los promedios, pero baja el % de calidad",
+      text:"Gold nunca recibe el registro inválido. Pero cuenta como rechazado en el porcentaje de calidad de su día. Ejemplo con 95 lecturas VALID previas ese día: " + g.pctBefore + " % → " + g.pctAfter + " %. También se guarda el detalle en gold.dq_errors y los contadores en gold.dq_run_metrics.",
+      file:"src/transformation/gold.py", code:"porcentaje_calidad = VALID / (publicados + rechazados) × 100\n" + g.before.valid + "/" + (g.before.pub + g.before.rej) + " → " + g.after.valid + "/" + (g.after.pub + g.after.rej)});
+  } else {
+    steps.push({from:"dq", to:"silver", type:"Publicación", status: ST_LABEL[status], title:"Silver: registro tipado y publicado",
+      text:"Se convierte el timestamp a fecha UTC, se agrega dq_status" + (status === "WARNING" ? " = WARNING y _dq_warnings = " + warned.map(x => x.id).join(";") : " = VALID") + " y se escribe en Parquet.",
+      file:"src/validation/engine.py (_classify)", record:"silver"});
+    steps.push({from:"silver", to:"gold", type:"Agregación", status: ST_LABEL[status], title:"Gold: se recalcula el indicador del día",
+      text:"Para el día, campo y fuente tocados se recalcula el indicador con TODO Silver y se hace upsert (si existe actualiza, si no inserta). Ejemplo con 95 lecturas VALID previas: porcentaje_calidad " + g.pctBefore + " % → " + g.pctAfter + " %" + (status === "WARNING" ? " (el WARNING se publica pero no suma como limpio)." : "."),
+      file:"src/transformation/gold.py", code:"porcentaje_calidad = VALID / (publicados + rechazados) × 100\n" + g.before.valid + "/" + (g.before.pub + g.before.rej) + " → " + g.after.valid + "/" + (g.after.pub + g.after.rej)});
+  }
+  steps.push({from:"gold", to:"graf", type:"Consulta", status:"OK", title:"Grafana lee solo Gold",
+    text:"Los dashboards consultan únicamente gold.* con el usuario dashboard, que es de solo lectura. Nunca ven datos crudos ni rechazados. Muestran el DQ Score estricto y el % utilizable, rotulados.",
+    file:"grafana/dashboards/", code:"SELECT dq_score, pct_utilizable\nFROM gold.dq_run_metrics\nWHERE status = 'ok' ORDER BY run_start DESC LIMIT 1"});
+  return {steps, rules, status};
+}
+
+const SETUP = [
+  {on:["git"], from:"git", to:"git", type:"Código", status:"OK", title:"1 · Se obtiene el código",
+   text:"git clone del repositorio y trabajar en una rama feature/*. main solo se actualiza por Pull Request desde staging.", file:".github/workflows/", code:"git clone https://github.com/SebastianMB1/IngSoftwareETL.git\ngit checkout feature/entornos-etl-paso-a-paso"},
+  {on:["cfg"], from:"git", to:"cfg", type:"Configuración", status:"OK", title:"2 · Configuración versionada",
+   text:"Las reglas, los campos y los parámetros viven en YAML: cambiar un umbral no requiere tocar código. Las contraseñas salen de .env.example (valores de desarrollo) y, si existe, .env las pisa; .env no se sube a Git.", file:"config/ · .env.example", code:"config/pipeline.yaml   fuentes, ventanas, tasa de error\nconfig/rules.yaml      12 reglas y umbrales\nconfig/fields.yaml     8 campos, 20.000 ha, 200 sensores\nconfig/environments/   dev, staging, prod"},
+  {on:["pg"], from:"cfg", to:"pg", type:"docker compose up", status:"OK", title:"3 · Arranca PostgreSQL 16",
+   text:"docker compose up -d --build construye la imagen (python:3.11-slim, usuario no root) y levanta PostgreSQL. Al crearse el contenedor, corren los scripts de sql/.", file:"docker-compose.yml · Dockerfile", code:"docker compose up -d --build"},
+  {on:["state"], from:"pg", to:"state", type:"Esquema", status:"OK", title:"4 · Se crean las 3 bases y las tablas",
+   text:"00_entornos.sh crea agro_dev, agro_staging y agro_prod y aplica sql/schema/01_schema.sql en cada una: esquemas etl y gold, con watermarks, fields, daily_field_metrics, dq_run_metrics, dq_errors y las tablas de trazabilidad. Es idempotente: sirve también para migrar una base existente.", file:"sql/00_entornos.sh · sql/schema/01_schema.sql", code:"CREATE DATABASE agro_dev;   -- también staging y prod\npsql -f 01_schema.sql"},
+  {on:[], from:"pg", to:"pg", type:"Seguridad", status:"OK", title:"5 · Se crean los usuarios de mínimo privilegio",
+   text:"99_app_users.sh crea el usuario pipeline (puede escribir) y el usuario dashboard (solo lectura sobre gold). Así Grafana nunca puede modificar datos.", file:"sql/99_app_users.sh", code:"pipeline  → lee y escribe\ndashboard → solo SELECT en gold"},
+  {on:["sched"], from:"pg", to:"sched", type:"Arranque", status:"OK", title:"6 · Arrancan los schedulers (uno por entorno)",
+   text:"Tres contenedores con la misma imagen y distinto APP_ENV: DEV (solo simulador, 20 % de errores), STAGING y PROD (ambas fuentes, 14 %). Cada uno con su base y su lake.", file:"docker-compose.yml", code:"scheduler-dev      APP_ENV=dev\nscheduler-staging  APP_ENV=staging\nscheduler-prod     APP_ENV=prod"},
+  {on:["extract","meteo","iot","bronze","dq","silver","quar"], from:"sched", to:"extract", type:"Primera corrida", status:"OK", title:"7 · La primera corrida crea el lake",
+   text:"Sin watermark, la primera corrida usa una ventana inicial. Aparecen las carpetas storage/<entorno>/bronze, silver y quarantine con sus Parquet, y las filas de gold.", file:"src/pipeline.py · src/main.py", code:"python -m src.main\n[BRONZE] 763 registros → …/bronze/agro/iot_simulator/…\n[SILVER] 1248 registros\n[QUARANTINE] 91 registros"},
+  {on:["gold"], from:"silver", to:"gold", type:"Gold", status:"OK", title:"8 · Se llenan las tablas de Gold",
+   text:"Se sincronizan los 8 campos en gold.fields, se calculan los indicadores diarios y se guarda el resumen de la corrida con el score estricto y el % utilizable.", file:"src/transformation/gold.py", code:"[DQ] total=1339 valid=1191 warning=57 invalid=91 score=88.95% utilizable=93.2%\n[DB] Upsert de 48 filas en gold.daily_field_metrics"},
+  {on:["graf"], from:"gold", to:"graf", type:"Dashboards", status:"OK", title:"9 · Grafana se provisiona sola",
+   text:"Grafana monta grafana/provisioning y grafana/dashboards: crea la fuente de datos (con el usuario de solo lectura) y los 3 dashboards. Selector de entorno arriba a la izquierda. Se ve en localhost:3000.", file:"grafana/", code:"calidad-datos · flujo-etl · etl-paso-a-paso"},
+  {on:["ci"], from:"git", to:"ci", type:"CI/CD", status:"OK", title:"10 · Cada cambio pasa por el CI",
+   text:"ci.yml corre ruff, valida rules.yaml y los notebooks, ejecuta los tests contra un PostgreSQL real con 80 % mínimo de cobertura en validación y construye la imagen. deploy.yml publica la imagen por rama: dev → development, staging → staging, main → production.", file:".github/workflows/ci.yml · deploy.yml", code:"ruff check .\npython -m src.validation.check_rules\npytest --cov=src\ncoverage report --include='src/validation/*' --fail-under=80"},
+  {on:[], from:"gold", to:"cfg", type:"Gobernanza", status:"OK", title:"11 · Catálogo y diccionario de datos",
+   text:"python -m src.governance.catalog extrae el esquema real de cada dataset, lo une con las descripciones de negocio y genera catalog/ (YAML) y docs/data_dictionary/ (Markdown).", file:"src/governance/", code:"python -m src.governance.catalog"}
+];
+
+if (typeof module !== "undefined") module.exports = {evalRules, classify, goldImpact, buildRun, SETUP, FIELD_IDS};
+</script>
+
+<script id="app">
+/* ====== Interfaz ====== */
+const $ = s => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+
+const PDUS = [
+  {id:"valid", name:"Lectura válida", color:"var(--ok)", rec:{field_id:"LIT-04", timestamp:"2026-10-19T14:45:00Z", temperature:22.4, temperature_unit:"°C", humidity:61, soil_moisture:0.31, precipitation:0, wind_speed:12, source:"iot_simulator"}},
+  {id:"warn", name:"Temperatura 46 °C (aviso)", color:"var(--warn)", rec:{field_id:"LIT-02", timestamp:"2026-10-19T14:45:00Z", temperature:46, temperature_unit:"°C", humidity:38, soil_moisture:0.22, precipitation:0, wind_speed:18, source:"iot_simulator"}},
+  {id:"bad", name:"Humedad 135 % (rechazo)", color:"var(--bad)", rec:{field_id:"LIT-05", timestamp:"2026-10-19T14:45:00Z", temperature:19.8, temperature_unit:"°C", humidity:135, soil_moisture:0.29, precipitation:0, wind_speed:9, source:"iot_simulator"}},
+  {id:"dup", name:"Duplicado de precipitación", color:"var(--bad)", rec:{field_id:"LIT-01", timestamp:"2026-10-19T14:30:00Z", temperature:17.2, temperature_unit:"°C", humidity:72, soil_moisture:0.35, precipitation:5, wind_speed:14, source:"iot_simulator", dup:true}},
+  {id:"meteo", name:"Open-Meteo (horario)", color:"var(--info)", rec:{field_id:"LIT-07", timestamp:"2026-10-14T13:00:00Z", temperature:21.1, temperature_unit:"°C", humidity:55, soil_moisture:0.27, precipitation:0, wind_speed:15, source:"open_meteo"}}
+];
+
+/* Dispositivos de la topología */
+const DEVICES = {
+  sched:{x:350,y:80,type:"clock",label:"Scheduler",sub:"cada 900 s"},
+  cfg:{x:110,y:600,type:"file",label:"Configuración",sub:"YAML + .env.example"},
+  meteo:{x:110,y:210,type:"cloud",label:"Open-Meteo API",sub:"datos reales · horarios"},
+  iot:{x:110,y:380,type:"sensor",label:"Sensores IoT",sub:"8 campos · 200 sensores"},
+  extract:{x:350,y:290,type:"router",label:"Extracción",sub:"run_bronze · incremental"},
+  state:{x:350,y:480,type:"db",label:"etl.watermarks",sub:"hasta dónde se leyó"},
+  bronze:{x:580,y:290,type:"storage",label:"Bronze",sub:"Parquet · inmutable",color:"#b9772f"},
+  dq:{x:810,y:290,type:"firewall",label:"Motor de calidad",sub:"12 reglas DQ01–DQ12"},
+  silver:{x:1030,y:160,type:"storage",label:"Silver",sub:"VALID + WARNING",color:"#8a98a8"},
+  quar:{x:1030,y:420,type:"storage",label:"Quarantine",sub:"rechazados + motivo",color:"#d64545"},
+  gold:{x:1250,y:290,type:"server",label:"Gold · PostgreSQL",sub:"indicadores y score",color:"#d4a017"},
+  graf:{x:1250,y:560,type:"monitor",label:"Grafana",sub:"localhost:3000"},
+  git:{x:580,y:600,type:"git",label:"GitHub",sub:"código · ramas · PR"},
+  ci:{x:810,y:600,type:"ci",label:"CI/CD",sub:"Actions · ruff · pytest"},
+  pg:{x:580,y:480,type:"server",label:"PostgreSQL 16",sub:"3 bases: dev/staging/prod",color:"#336791"}
+};
+const LINKS = [
+  ["sched","extract",true],["meteo","extract"],["iot","extract"],["extract","state"],["extract","bronze"],["bronze","dq"],
+  ["dq","silver"],["dq","quar"],["silver","gold"],["quar","gold"],["gold","graf"],["cfg","extract",true],["cfg","dq",true],
+  ["git","ci",true],["ci","dq",true],["pg","state",true],["pg","gold",true],["cfg","git",true]
+];
+
+/* Contenido de las ventanas de cada dispositivo */
+const INFO = {
+  sched:{t:"Scheduler",resumen:"Dispara el pipeline cada <b>PIPELINE_INTERVAL_SECONDS</b> (900 s = 15 min, la frecuencia de los sensores). Hay uno por entorno. Una corrida fallida se registra y no frena las siguientes.",files:["src/scheduler.py","src/main.py (modo manual)"],cli:"[SCHEDULER] Entorno DEV · corrida cada 900s.\n[SCHEDULER] 2026-10-19 15:00:00 UTC - inicio de corrida",code:"python -m src.scheduler     # bucle cada 900 s\npython -m src.main          # una corrida a mano"},
+  cfg:{t:"Configuración",resumen:"Todo lo que se puede cambiar sin tocar código: <b>rules.yaml</b> (umbrales de las 12 reglas), <b>fields.yaml</b> (8 campos, 20.000 ha, 200 sensores), <b>pipeline.yaml</b> (fuentes, ventanas, tasa de error 14 %) y <b>environments/</b> (lo que cambia en dev, staging y prod). Las contraseñas vienen de <b>.env.example</b> y, si existe, <b>.env</b> las pisa.",files:["config/pipeline.yaml","config/rules.yaml","config/fields.yaml","config/environments/*.yaml",".env.example"],cli:"[RULES] OK: 12 reglas y 8 campos válidos.",code:"python -m src.validation.check_rules   # lo corre el CI"},
+  meteo:{t:"Open-Meteo API",resumen:"Datos meteorológicos <b>reales</b>, horarios, para las coordenadas de cada campo. Publica con unos 5 días de retraso (<code>lag_days: 5</code>). Reintenta 3 veces con espera creciente. Está desactivada en DEV para no depender de internet.",files:["src/ingestion/open_meteo.py"],cli:"[BRONZE] 576 registros -> …/bronze/agro/open_meteo/year=2026/month=10/batch_9b1c8b81….parquet\n[STATE] Watermark agro.open_meteo = 2026-10-09T23:00:00+00:00",code:"base_url: https://archive-api.open-meteo.com/v1/archive\nretries: 3"},
+  iot:{t:"Sensores IoT (simulador)",resumen:"Cada sensor reporta cada 15 minutos (96 lecturas por día). La cliente tiene 200 sensores en 8 campos = 19.200 registros por día. El simulador de la POC genera <b>una lectura por campo</b> (768 por día) e inyecta 13 tipos de error a propósito para medir si las reglas los detectan.",files:["src/ingestion/iot_simulator.py","src/ingestion/schema.py"],cli:"[BRONZE] 763 registros -> …/bronze/agro/iot_simulator/…\n[STATE] Watermark agro.iot_simulator = 2026-10-14T01:00:00+00:00",code:"error_rate: 0.14   # 0.20 en dev\n# tipos: null_timestamp, bad_timestamp, future_timestamp,\n# unknown_field, duplicate, wrong_unit, humidity_out_of_range,\n# negative_precipitation, temperature_extreme, soil_out_of_range,\n# gap, spike, null_field"},
+  extract:{t:"Extracción (run_bronze)",resumen:"Pide la ventana nueva de cada fuente, unifica las columnas, agrega el <b>linaje</b> (<code>_batch_id</code>, <code>_ingested_at</code>, <code>_source_system</code>) y escribe Bronze. Recién después avanza el watermark.",files:["src/pipeline.py","src/common/lake.py","src/common/state.py"],cli:"[BRONZE] 8 registros -> /app/storage/dev/bronze/agro/iot_simulator/…\n[STATE] Watermark agro.iot_simulator = 2026-10-19T15:00:00+00:00",code:"batch_id = lake.new_batch_id()   # UUID del lote\ndf = lake.enrich_with_lineage(df, source, batch_id)\nlake.write_parquet(df, ..., 'bronze', ...)"},
+  state:{t:"etl.watermarks",resumen:"Tabla de PostgreSQL con el <b>fin de la última ventana</b> leída de cada fuente. Se guarda el fin de la ventana (no el máximo timestamp de los datos), así un registro con fecha futura no la corrompe y los rechazados no se piden de nuevo.",files:["src/common/state.py","sql/schema/01_schema.sql"],cli:"agro_dev=# SELECT * FROM etl.watermarks;\n domain |    entity     |       watermark        \n agro   | iot_simulator | 2026-10-19 15:00:00+00",code:"ventana siguiente = (watermark, fin]"},
+  bronze:{t:"Bronze (lake Parquet)",resumen:"Los datos <b>exactamente como llegaron</b>, más el linaje. Es <b>inmutable</b>: nunca se reescribe un lote, así siempre se puede reprocesar Silver y Gold sin volver a llamar a la fuente.",files:["storage/<entorno>/bronze/agro/<fuente>/year=AAAA/month=MM/batch_<lote>.parquet"],cli:"python -m src.main --reprocess <batch_id>   # regenera Silver y Gold desde Bronze",code:"FileExistsError si el lote ya existe"},
+  dq:{t:"Motor de calidad (12 reglas)",resumen:"Evalúa DQ01–DQ12 en tres tandas: <b>identificación</b> (DQ01–05), <b>valores</b> (DQ06–10) y <b>secuencia</b> (DQ11–12). Cada hallazgo es REJECT o WARNING. <b>Un rechazo en una sola variable invalida el registro completo.</b> Los umbrales están en rules.yaml.",files:["src/validation/engine.py","src/validation/check_rules.py","config/rules.yaml"],cli:"[DQ] total=1339 valid=1191 warning=57 invalid=91 score=88.95% utilizable=93.2% errores=336",code:"dq_score       = VALID / total × 100\npct_utilizable = (VALID + WARNING) / total × 100"},
+  silver:{t:"Silver",resumen:"Registros <b>VALID</b> y <b>WARNING</b>, ya tipados (timestamp en UTC), con <code>dq_status</code> y los avisos en <code>_dq_warnings</code>. Se puede regenerar desde Bronze.",files:["storage/<entorno>/silver/agro/measurements/…/clean_<lote>.parquet"],cli:"[SILVER] 1248 registros -> …/silver/agro/measurements/…/clean_9b1c8b81….parquet",code:"dq_status ∈ {VALID, WARNING}"},
+  quar:{t:"Quarantine",resumen:"Los registros <b>rechazados</b>, sin modificar, con <code>_rejection_reasons</code> (por ejemplo <code>DQ07</code>) y <code>_rejected_at</code>. El 100 % de los rechazos queda acá con su motivo: nada se descarta en silencio.",files:["storage/<entorno>/quarantine/agro/measurements/…/rejected_<lote>.parquet"],cli:"[QUARANTINE] 91 registros -> …/quarantine/agro/measurements/…/rejected_9b1c8b81….parquet",code:"_rejection_reasons = 'DQ07'"},
+  gold:{t:"Gold · PostgreSQL",resumen:"Lo único que consume el dashboard. <b>gold.daily_field_metrics</b> (indicadores por fecha, campo y fuente, con upsert), <b>gold.dq_run_metrics</b> (score estricto y % utilizable por corrida), <b>gold.dq_errors</b> (cada hallazgo) y las tablas de trazabilidad. Nunca contiene registros inválidos.",files:["src/transformation/gold.py","src/metrics/quality.py","sql/schema/01_schema.sql"],cli:"[DB] Upsert de 8 filas en gold.fields.\n[DB] Upsert de 48 filas en gold.daily_field_metrics.\n[PIPELINE] Lote 9b1c8b81-… procesado.\n[PIPELINE] Duración: 29.8s (objetivo RNF08: < 300s)",code:"clave: (fecha, field_id, fuente)\nporcentaje_calidad = VALID / (publicados + rechazados) × 100"},
+  graf:{t:"Grafana",resumen:"Tres dashboards provisionados desde el repo: <b>calidad-datos</b>, <b>flujo-etl</b> y <b>etl-paso-a-paso</b> (sigue un registro real por las 5 etapas). Un selector de entorno cambia entre DEV, STAGING y PROD. Lee con el usuario <code>dashboard</code>, de solo lectura.",files:["grafana/dashboards/*.json","grafana/provisioning/"],cli:"http://localhost:3000",code:"Última corrida: DQ Score estricto · % utilizable · VALID · WARNING · INVALID"},
+  git:{t:"GitHub",resumen:"Código, ramas y Pull Requests. Flujo: <b>feature/*</b> → <b>dev</b> → <b>staging</b> → <b>main</b>. <b>main</b> solo se actualiza por PR desde staging, con revisión del equipo.",files:[".github/workflows/ci.yml",".github/workflows/deploy.yml"],cli:"git log --oneline",code:"dev → development\nstaging → staging\nmain → production"},
+  ci:{t:"CI/CD (GitHub Actions)",resumen:"En cada cambio: Ruff, validación de rules.yaml y notebooks, tests con Pytest contra PostgreSQL real, cobertura mínima de 80 % en <code>src/validation</code> y build de la imagen Docker. Al subir a dev, staging o main publica la imagen en GitHub Container Registry.",files:[".github/workflows/ci.yml",".github/workflows/deploy.yml"],cli:"ruff check .                       → All checks passed!\npytest --cov=src                   → 92 passed\ncoverage report (validation)       → 92 %",code:"coverage report --include='src/validation/*' --fail-under=80"},
+  pg:{t:"PostgreSQL 16",resumen:"Un solo servidor con <b>tres bases</b> aisladas: agro_dev, agro_staging y agro_prod. Se crean con 00_entornos.sh, que aplica el esquema y es idempotente. Usuarios de mínimo privilegio: <code>pipeline</code> (escribe) y <code>dashboard</code> (solo lectura).",files:["docker-compose.yml","sql/00_entornos.sh","sql/99_app_users.sh","sql/schema/01_schema.sql"],cli:"[INIT] Base agro_dev lista.\n[INIT] Base agro_staging lista.\n[INIT] Base agro_prod lista.\n[INIT] Permisos aplicados en agro_dev.",code:"docker compose up -d --build"}
+};
+
+/* ===== Dibujo ===== */
+const svg = $("#net");
+function el(name, attrs = {}, parent){
+  const e = document.createElementNS(NS, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function icon(g, d){
+  const c = d.color, s = (a) => el(a[0], a[1], g);
+  const R = (x,y,w,h,f,rx=4) => s(["rect",{x,y,width:w,height:h,rx,fill:f,stroke:"rgba(0,0,0,.35)","stroke-width":1}]);
+  switch (d.type){
+    case "cloud": s(["path",{d:"M-26 12 a14 14 0 0 1 4-27 a18 18 0 0 1 34-4 a15 15 0 0 1 8 31 z",fill:"#7cc4ee",stroke:"#2b7bd6","stroke-width":1.5}]); break;
+    case "sensor": R(-22,-8,44,24,"#37a96b"); s(["circle",{cx:0,cy:4,r:5,fill:"#fff"}]); s(["path",{d:"M0 -8 V-22 M-8 -17 a10 10 0 0 1 16 0 M-14 -22 a18 18 0 0 1 28 0",stroke:"#1f9d55","stroke-width":2.2,fill:"none"}]); break;
+    case "router": R(-30,-14,60,28,"#2b9fd6",14); s(["path",{d:"M-18 -4 H14 M8 -9 L14 -4 L8 1 M18 6 H-14 M-8 1 L-14 6 L-8 11",stroke:"#fff","stroke-width":2.2,fill:"none"}]); break;
+    case "storage": for (let i = 0; i < 3; i++){ s(["ellipse",{cx:0,cy:-14+i*13,rx:26,ry:8,fill:c,stroke:"rgba(0,0,0,.4)"}]); } s(["rect",{x:-26,y:-14,width:52,height:26,fill:c,opacity:.0}]); break;
+    case "db": s(["path",{d:"M-22 -12 v26 a22 8 0 0 0 44 0 v-26",fill:"#5b7fa6",stroke:"rgba(0,0,0,.4)"}]); s(["ellipse",{cx:0,cy:-12,rx:22,ry:8,fill:"#86a8cf",stroke:"rgba(0,0,0,.4)"}]); break;
+    case "firewall": R(-30,-18,60,36,"#d9603b"); s(["path",{d:"M-30 -6 H30 M-30 6 H30 M-10 -18 V-6 M10 -18 V-6 M0 -6 V6 M-20 6 V18 M20 6 V18",stroke:"#7a2a12","stroke-width":1.6}]); s(["path",{d:"M0 -26 l13 5 v10 c0 8 -6 12 -13 15 c-7 -3 -13 -7 -13 -15 v-10 z",fill:"#fff",stroke:"#d9603b","stroke-width":2,transform:"translate(0,12) scale(.9)"}]); break;
+    case "server": R(-20,-26,40,52,c || "#5b7fa6"); for (let i = 0; i < 4; i++) R(-15,-21+i*12,30,8,"rgba(255,255,255,.55)",2); break;
+    case "monitor": R(-30,-20,60,36,"#2f3b48"); R(-26,-16,52,28,"#ffffff",2); s(["path",{d:"M-18 8 V-2 M-8 8 V-8 M2 8 V2 M12 8 V-10 M-22 8 H20",stroke:"#2b7bd6","stroke-width":4,fill:"none"}]); R(-10,16,20,5,"#2f3b48",2); break;
+    case "clock": s(["circle",{cx:0,cy:0,r:22,fill:"#fff",stroke:"#1f5fa8","stroke-width":3}]); s(["path",{d:"M0 -12 V0 L9 6",stroke:"#1f5fa8","stroke-width":3,fill:"none","stroke-linecap":"round"}]); break;
+    case "file": R(-20,-24,40,48,"#f4c542"); s(["path",{d:"M-12 -10 H12 M-12 0 H12 M-12 10 H4",stroke:"#7a5a00","stroke-width":2.2}]); break;
+    case "git": s(["circle",{cx:0,cy:0,r:22,fill:"#24292f"}]); s(["path",{d:"M-8 -10 V10 M-8 -2 C-8 4 6 -2 8 -8",stroke:"#fff","stroke-width":2.4,fill:"none"}]); s(["circle",{cx:-8,cy:-10,r:3.5,fill:"#fff"}]); s(["circle",{cx:-8,cy:10,r:3.5,fill:"#fff"}]); s(["circle",{cx:8,cy:-8,r:3.5,fill:"#fff"}]); break;
+    case "ci": R(-28,-18,56,36,"#6f42c1"); s(["path",{d:"M-12 -4 L-4 6 L14 -10",stroke:"#fff","stroke-width":4,fill:"none","stroke-linecap":"round","stroke-linejoin":"round"}]); break;
+  }
+}
+
+const gLinks = el("g", {}, svg), gZones = el("g", {}, svg), gDev = el("g", {}, svg), gPdu = el("g", {id:"pdu"}, svg);
+const devEl = {}, linkEl = [];
+
+function zone(x, y, w, h, t){ el("rect", {x, y, width:w, height:h, rx:14, class:"zone"}, gZones); const tx = el("text", {x:x+12, y:y+h-10, class:"zone-t"}, gZones); tx.textContent = t; }
+zone(20, 130, 200, 370, "Fuentes");
+zone(250, 30, 190, 560, "Ingesta");
+zone(480, 190, 440, 200, "Lake Parquet y calidad");
+zone(950, 70, 160, 440, "Salidas del lake");
+zone(1160, 190, 220, 480, "Base y dashboards");
+zone(480, 410, 440, 310, "Código, CI/CD y base");
+zone(20, 520, 200, 200, "Config");
+
+for (const [a, b, ctl] of LINKS){
+  const A = DEVICES[a], B = DEVICES[b];
+  const p = el("line", {x1:A.x, y1:A.y, x2:B.x, y2:B.y, class:"link" + (ctl ? " ctl" : "")}, gLinks);
+  linkEl.push({a, b, p, ctl:!!ctl});
+}
+for (const id in DEVICES){
+  const d = DEVICES[id];
+  const g = el("g", {class:"dev", transform:`translate(${d.x},${d.y})`, tabindex:0, role:"button", "aria-label":d.label + ": abrir configuración"}, gDev);
+  el("rect", {class:"box", x:-75, y:-48, width:150, height:114, rx:10}, g);
+  const ig = el("g", {transform:"translate(0,-12)"}, g); icon(ig, d);
+  el("circle", {cx:63, cy:-37, r:5, class:"lamp"}, g);
+  const t1 = el("text", {x:0, y:40, "font-weight":600}, g); t1.textContent = d.label;
+  const t2 = el("text", {x:0, y:57, class:"sub"}, g); t2.textContent = d.sub;
+  g.addEventListener("click", () => openDevice(id));
+  g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openDevice(id); } });
+  devEl[id] = g;
+}
+
+/* ===== Estado de la simulación ===== */
+let mode = "run", curPdu = PDUS[0], run = null, idx = -1, timer = null, anim = null;
+let powered = new Set();
+
+function steps(){ return mode === "run" ? run.steps : SETUP; }
+
+function chipBar(){
+  const bar = $("#pduBar"); bar.innerHTML = "";
+  if (mode === "setup"){ bar.innerHTML = '<span class="hint">Los dispositivos están apagados. Cada evento enciende uno, en el orden real en que se arma el proyecto.</span>'; return; }
+  const lb = document.createElement("span"); lb.className = "hint"; lb.textContent = "Paquete:"; bar.appendChild(lb);
+  for (const p of PDUS){
+    const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", String(p === curPdu));
+    b.innerHTML = `<span class="dot" style="background:${p.color}"></span>${p.name}`;
+    b.onclick = () => { curPdu = p; reset(); };
+    bar.appendChild(b);
+  }
+  const n = document.createElement("button"); n.className = "chip"; n.textContent = "＋ Crear paquete propio"; n.onclick = () => $("#dlgNew").showModal();
+  bar.appendChild(n);
+}
+
+function reset(){
+  stopAuto();
+  idx = -1; powered = new Set();
+  if (mode === "run") run = buildRun(curPdu);
+  chipBar(); render(); renderEvents();
+  gPdu.innerHTML = "";
+  $("#detail").innerHTML = '<p class="hint">' + (mode === "run"
+    ? "Paquete elegido: <b>" + curPdu.name + "</b>. Apretá <b>Capturar / Avanzar</b> para seguirlo, o <b>Auto</b> para verlo correr solo. Hacé clic en cualquier dispositivo para ver su configuración."
+    : "Apretá <b>Capturar / Avanzar</b> para ir encendiendo cada pieza, en el orden en que se crea todo el proyecto.") + "</p>";
+}
+
+function render(){
+  const s = steps(), cur = idx >= 0 ? s[idx] : null;
+  for (const id in devEl){
+    const g = devEl[id], off = mode === "setup" && !powered.has(id), here = !!cur && cur.to === id;
+    g.setAttribute("class", "dev" + (off ? " off" : "") + (here ? " at s-" + cur.status : ""));
+    g.querySelector(".lamp").setAttribute("class", "lamp" + (off ? "" : " on"));
+  }
+  for (const l of linkEl){
+    const up = mode === "run" || (powered.has(l.a) && powered.has(l.b));
+    const hot = !!cur && cur.from !== cur.to && ((cur.from === l.a && cur.to === l.b) || (cur.from === l.b && cur.to === l.a));
+    l.p.setAttribute("class", "link" + (l.ctl ? " ctl" : "") + (up ? " on" : "") + (hot ? " pulse" : ""));
+  }
+  $("#progress").textContent = "Evento " + Math.max(idx + 1, 0) + " de " + s.length;
+  $("#bBack").disabled = idx < 0; $("#bStep").disabled = idx >= s.length - 1; $("#bPlay").disabled = idx >= s.length - 1 && !timer;
+}
+
+function renderEvents(){
+  const body = $("#evBody"); body.innerHTML = "";
+  steps().forEach((s, i) => {
+    if (i > idx) return;
+    const tr = document.createElement("tr"); tr.className = "ev" + (i === idx ? " cur" : "");
+    const nm = id => (DEVICES[id] ? DEVICES[id].label : id);
+    tr.innerHTML = `<td>${i + 1}</td><td>${nm(s.from)}</td><td>${nm(s.to)}</td><td><span class="badge b-${s.status}">${s.type}</span></td><td>ℹ</td>`;
+    tr.onclick = () => { idx = i; applyPower(); render(); renderEvents(); showDetail(s); };
+    body.appendChild(tr);
+  });
+  const cur = body.querySelector("tr.cur"); if (cur) cur.scrollIntoView({block:"nearest"});
+}
+
+function applyPower(){
+  powered = new Set();
+  if (mode !== "setup") return;
+  for (let i = 0; i <= idx; i++) for (const d of SETUP[i].on) powered.add(d);
+  if (idx >= 0){ powered.add(SETUP[idx].from); powered.add(SETUP[idx].to); }
+}
+
+function recView(kind){
+  const r = curPdu.rec, rec = mode === "run" ? run : null; if (!rec) return "";
+  const raw = {timestamp:r.timestamp, field_id:r.field_id, temperature:r.temperature, temperature_unit:r.temperature_unit, humidity:r.humidity, soil_moisture:r.soil_moisture, precipitation:r.precipitation, wind_speed:r.wind_speed, source:r.source};
+  let o = raw, title = "El registro tal como llegó (texto crudo)";
+  if (kind === "bronze"){ o = {...raw, _batch_id:"9c617b88-90f5-…", _ingested_at:"2026-10-19T15:00:03Z", _source_system:r.source}; title = "En Bronze: el mismo registro + linaje"; }
+  if (kind === "final"){ o = {...raw, dq_status:rec.status, hallazgos:rec.rules.filter(x => x.result !== "OK").map(x => x.id + " " + x.result)}; title = "Resultado de la validación"; }
+  if (kind === "silver"){ o = {timestamp:"datetime UTC", field_id:r.field_id, temperature:r.temperature, humidity:r.humidity, soil_moisture:r.soil_moisture, precipitation:r.precipitation, wind_speed:r.wind_speed, dq_status:rec.status, _dq_warnings:rec.rules.filter(x => x.result === "WARNING").map(x => x.id).join(";") || null}; title = "En Silver: tipado y con dq_status"; }
+  if (kind === "quarantine"){ o = {...raw, _rejection_reasons:rec.rules.filter(x => x.result === "REJECT").map(x => x.id).join(";"), _rejected_at:"2026-10-19T15:00:04Z"}; title = "En Quarantine: sin modificar + motivo"; }
+  return `<div class="hint" style="margin-top:8px">${title}</div><pre>${JSON.stringify(o, null, 2)}</pre>`;
+}
+
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function showDetail(s){
+  let h = `<h3>${esc(s.title)}</h3><span class="badge b-${s.status}">${s.type}</span>`;
+  h += `<p>${esc(s.text)}</p>`;
+  if (s.file) h += `<div class="kv"><b>Archivo</b><span><code>${esc(s.file)}</code></span></div>`;
+  if (s.rules){
+    h += `<table class="rules"><thead><tr><th>Regla</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody>` +
+      s.rules.map(x => `<tr><td>${x.id}<div class="hint">${esc(x.name)}</div></td><td class="r-${x.result}">${x.result}</td><td>${esc(x.detalle)}</td></tr>`).join("") + `</tbody></table>`;
+  }
+  if (s.code) h += `<pre>${esc(s.code)}</pre>`;
+  if (s.record) h += recView(s.record);
+  $("#detail").innerHTML = h;
+}
+
+/* ===== Animación del paquete ===== */
+function sendPdu(s, done){
+  gPdu.innerHTML = "";
+  if (mode !== "run" || s.from === s.to){ done(); return; }
+  const A = DEVICES[s.from], B = DEVICES[s.to];
+  const col = s.status === "REJECT" ? "var(--bad)" : s.status === "WARNING" ? "var(--warn)" : curPdu.color;
+  const g = el("g", {}, gPdu);
+  el("rect", {x:-14, y:-10, width:28, height:20, rx:3, fill:col, stroke:"#fff", "stroke-width":2}, g);
+  el("path", {d:"M-14 -10 L0 3 L14 -10", fill:"none", stroke:"#fff", "stroke-width":1.6}, g);
+  const dur = [1800, 1300, 900, 550, 300][+$("#speed").value - 1], t0 = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - t0) / dur);
+    g.setAttribute("transform", `translate(${A.x + (B.x - A.x) * k},${A.y + (B.y - A.y) * k})`);
+    if (k < 1) anim = requestAnimationFrame(step); else { anim = null; gPdu.innerHTML = ""; done(); }
+  };
+  anim = requestAnimationFrame(step);
+}
+
+function advance(){
+  const s = steps();
+  if (idx >= s.length - 1){ stopAuto(); return false; }
+  if (anim){ cancelAnimationFrame(anim); anim = null; gPdu.innerHTML = ""; }
+  idx++; const ev = s[idx];
+  applyPower(); render(); renderEvents(); showDetail(ev);
+  if (mode === "run") sendPdu(ev, () => {});
+  return true;
+}
+function stopAuto(){ if (timer){ clearTimeout(timer); timer = null; } $("#bPlay").textContent = "▶ Auto"; }
+function startAuto(){
+  if (timer) { stopAuto(); return; }
+  $("#bPlay").textContent = "⏸ Pausa";
+  const delay = () => [3200, 2400, 1800, 1100, 700][+$("#speed").value - 1];
+  const tick = () => { if (!advance()) { stopAuto(); render(); return; } timer = setTimeout(tick, delay()); };
+  timer = setTimeout(tick, 0);
+}
+/* ===== Ventanas ===== */
+function openDevice(id){
+  const i = INFO[id], d = DEVICES[id];
+  $("#dlgTitle").textContent = i.t;
+  const tabs = [["Resumen", () => `<p>${i.resumen}</p><div class="kv"><b>Tipo</b><span>${esc(d.sub)}</span></div>`],
+                ["Archivos", () => `<p class="hint">Dónde está en el repositorio:</p><ul>${i.files.map(f => `<li><code>${esc(f)}</code></li>`).join("")}</ul>`],
+                ["Código", () => `<pre>${esc(i.code)}</pre>`],
+                ["CLI", () => `<p class="hint">Salida real de una corrida:</p><pre>${esc(i.cli)}</pre>`]];
+  const tb = $("#dlgTabs"); tb.innerHTML = "";
+  const show = n => { [...tb.children].forEach((b, k) => b.setAttribute("aria-selected", String(k === n))); $("#dlgBody").innerHTML = tabs[n][1](); };
+  tabs.forEach((t, n) => { const b = document.createElement("button"); b.className = "dtab"; b.setAttribute("role", "tab"); b.textContent = t[0]; b.onclick = () => show(n); tb.appendChild(b); });
+  show(0); $("#dlg").showModal();
+}
+
+/* ===== Eventos de la interfaz ===== */
+$("#bStep").onclick = () => { stopAuto(); advance(); };
+$("#bReset").onclick = reset;
+$("#bBack").onclick = () => { stopAuto(); if (idx < 0) return; idx--; gPdu.innerHTML = ""; applyPower(); render(); renderEvents(); if (idx >= 0) showDetail(steps()[idx]); };
+$("#bPlay").onclick = startAuto;
+$("#dlgX").onclick = () => $("#dlg").close();
+$("#newX").onclick = $("#newCancel").onclick = () => $("#dlgNew").close();
+$("#dlg").addEventListener("click", e => { if (e.target === $("#dlg")) $("#dlg").close(); });
+$("#newForm").addEventListener("submit", e => {
+  const f = new FormData(e.target), num = k => (f.get(k) === "" ? NaN : Number(f.get(k)));
+  const rec = {field_id:f.get("field_id"), timestamp:f.get("timestamp"), temperature:num("temperature"), temperature_unit:f.get("temperature_unit"),
+    humidity:num("humidity"), soil_moisture:num("soil_moisture"), precipitation:num("precipitation"), wind_speed:num("wind_speed"),
+    source:f.get("source"), dup:!!f.get("dup"), gap:!!f.get("gap"), spike:!!f.get("spike")};
+  const status = classify(evalRules(rec));
+  curPdu = {id:"custom", name:"Mi paquete (" + status + ")", color: status === "VALID" ? "var(--ok)" : status === "WARNING" ? "var(--warn)" : "var(--bad)", rec};
+  PDUS.push(curPdu);
+  reset();
+});
+function setMode(m){
+  mode = m; stopAuto();
+  $("#tab-run").setAttribute("aria-selected", String(m === "run")); $("#tab-setup").setAttribute("aria-selected", String(m === "setup"));
+  reset();
+}
+$("#tab-run").onclick = () => setMode("run");
+$("#tab-setup").onclick = () => setMode("setup");
+window.addEventListener("keydown", e => {
+  if (document.querySelector("dialog[open]")) return;
+  if (e.key === "ArrowRight") { stopAuto(); advance(); }
+  if (e.key === "ArrowLeft") $("#bBack").click();
+});
+
+setMode("run");
+</script>
+</body>
+</html>
