@@ -40,7 +40,12 @@ class ValidationResult:
 
     @property
     def dq_score(self) -> float:
-        """Data Quality Score = registros publicables (VALID + WARNING) / totales × 100 (D2)."""
+        """Data Quality Score estricto = registros VALID / totales × 100 (D2). Un WARNING no cuenta como limpio."""
+        return round(self.valid / self.total * 100, 2) if self.total else 100.0
+
+    @property
+    def pct_utilizable(self) -> float:
+        """% utilizable = registros publicados en Silver (VALID + WARNING) / totales × 100 (D2)."""
         return round((self.valid + self.warning) / self.total * 100, 2) if self.total else 100.0
 
 

@@ -35,7 +35,7 @@ def test_reglas_detectan_al_menos_95_por_ciento_de_errores_inyectados(rules, fie
 def test_simulador_genera_una_lectura_cada_15_min_por_campo():
     cfg = dict(load_pipeline()["sources"]["iot_simulator"], seed=1, error_rate=0)
     df = iot_simulator.generate(load_fields(), NOW - timedelta(hours=24), NOW, cfg)
-    assert len(df) == 6 * 96  # 576 registros por día (documento, sección 2.1)
+    assert len(df) == 8 * 96  # 768 registros por día: una estación por campo (el simulador no es por sensor)
     assert df["_sim_injected_error"].isna().all()
 
 
@@ -111,6 +111,16 @@ def test_gold_no_contiene_registros_invalidos(rules, field_ids):
     assert out.loc[0, "porcentaje_calidad"] == 50.0
 
 
+def test_porcentaje_calidad_de_gold_es_estricto_y_no_cuenta_los_warning(rules, field_ids):
+    # 1 VALID + 1 WARNING (temperatura fuera del rango esperado) + 1 INVALID, mismo campo y día.
+    r = _silver([reading(), reading(ts="2026-10-15T10:15:00Z", temperature=46),
+                 reading(ts="2026-10-15T10:30:00Z", humidity=200)], rules, field_ids, "b1")
+    out = gold.daily_metrics(r.silver, r.quarantine, gold.affected_keys(r.silver, TZ), TZ, "b1")
+    assert out.loc[0, "cantidad_mediciones"] == 2                      # VALID + WARNING se publican
+    assert out.loc[0, "porcentaje_calidad"] == pytest.approx(33.33)    # 1 VALID de 3 (igual que el score de la corrida)
+    assert out.loc[0, "porcentaje_calidad"] == r.dq_score
+
+
 def test_gold_usa_la_fecha_local_del_negocio(rules, field_ids):
     # 02:00 UTC del 15/10 es 23:00 del 14/10 en Argentina.
     r = _silver([reading(ts="2026-10-15T02:00:00Z")], rules, field_ids, "b1")
@@ -120,11 +130,12 @@ def test_gold_usa_la_fecha_local_del_negocio(rules, field_ids):
 
 # ---- Métricas y SQL ------------------------------------------------------------------
 
-def test_dq_score_cuenta_valid_y_warning(rules, field_ids):
+def test_dq_score_es_estricto_y_pct_utilizable_suma_los_warning(rules, field_ids):
     r = validate(bronze([reading(), reading(ts="2026-10-15T10:15:00Z", temperature=46),
                          reading(ts="2026-10-15T10:30:00Z", humidity=200)]), rules, field_ids, now=NOW)
     assert (r.valid, r.warning, r.invalid) == (1, 1, 1)
-    assert r.dq_score == pytest.approx(66.67)
+    assert r.dq_score == pytest.approx(33.33)         # estricto: solo VALID (1 de 3)
+    assert r.pct_utilizable == pytest.approx(66.67)   # VALID + WARNING (2 de 3)
 
 
 def test_errores_tienen_el_detalle_de_rf08(rules, field_ids):
@@ -132,7 +143,7 @@ def test_errores_tienen_el_detalle_de_rf08(rules, field_ids):
     e = errors_frame(r, rules, "b1")
     row = e.iloc[0]
     assert (row.rule_id, row.variable, row.action, row.severidad, row.field_id) == (
-        "DQ07", "humidity", "REJECT", "Alta", "C01")
+        "DQ07", "humidity", "REJECT", "Alta", "LIT-01")
     assert row.measured_at == pd.Timestamp("2026-10-15T10:00:00Z")
 
 

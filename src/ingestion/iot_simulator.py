@@ -1,7 +1,8 @@
 """
 iot_simulator.py
-Simulador de las 6 estaciones IoT (una lectura cada 15 minutos con 5 variables).
-Inyecta errores realistas a una tasa configurable (~8%, documento sección 2.2) y deja
+Simulador de las estaciones IoT: una estación por campo (8 campos, ver config/fields.yaml), una lectura
+cada 15 minutos con 5 variables. No simula sensores individuales (24-32 por campo); ver docs/revision/paso-1.md.
+Inyecta errores realistas a una tasa configurable (error_rate en config/pipeline.yaml, hoy ~14%) y deja
 registrado en `_sim_injected_error` qué se inyectó, para medir la detección de las reglas.
 """
 
@@ -118,7 +119,7 @@ def _inject(df: pd.DataFrame, idx: int, kind: str, now: datetime, drop: set, ext
     elif kind == "future_timestamp":
         df.at[idx, "timestamp"] = (now + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
     elif kind == "unknown_field":
-        df.at[idx, "field_id"] = "C99"
+        df.at[idx, "field_id"] = "LIT-99"
     elif kind == "wrong_unit":
         df.at[idx, "temperature"] = round(df.at[idx, "temperature"] * 9 / 5 + 32, 2)
         df.at[idx, "temperature_unit"] = "°F"

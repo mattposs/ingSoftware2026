@@ -1,7 +1,7 @@
 {
   "uid": "agro-calidad",
   "title": "Calidad de datos agroclimáticos",
-  "description": "Pipeline DataOps · UnaCocuCha SRL para Agropecuaria Los Tres Ombúes S.A. (POC UADE 2026)",
+  "description": "Pipeline DataOps · UnaCocuCha SRL para Grupo Agro del Litoral S.A. (POC UADE 2026)",
   "tags": [
     "agro",
     "dataops",
@@ -36,26 +36,17 @@
       {
         "name": "fuente",
         "label": "Fuente",
-        "type": "custom",
-        "query": "Open-Meteo : open_meteo, Simulador IoT : iot_simulator",
-        "current": {
-          "text": "Open-Meteo",
-          "value": "open_meteo"
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "${entorno}"
         },
-        "options": [
-          {
-            "text": "Open-Meteo",
-            "value": "open_meteo",
-            "selected": true
-          },
-          {
-            "text": "Simulador IoT",
-            "value": "iot_simulator",
-            "selected": false
-          }
-        ],
+        "query": "SELECT CASE fuente WHEN 'open_meteo' THEN 'Open-Meteo' ELSE 'Simulador IoT' END AS __text, fuente AS __value FROM (SELECT DISTINCT fuente FROM gold.daily_field_metrics) s ORDER BY fuente DESC",
+        "definition": "SELECT CASE fuente WHEN 'open_meteo' THEN 'Open-Meteo' ELSE 'Simulador IoT' END AS __text, fuente AS __value FROM (SELECT DISTINCT fuente FROM gold.daily_field_metrics) s ORDER BY fuente DESC",
+        "refresh": 1,
         "multi": false,
-        "includeAll": false
+        "includeAll": false,
+        "sort": 0
       },
       {
         "name": "campo",
@@ -65,8 +56,8 @@
           "type": "grafana-postgresql-datasource",
           "uid": "${entorno}"
         },
-        "query": "SELECT field_id || ' · ' || nombre AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
-        "definition": "SELECT field_id || ' · ' || nombre AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
+        "query": "SELECT field_id || ' · ' || localidad AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
+        "definition": "SELECT field_id || ' · ' || localidad AS __text, field_id AS __value FROM gold.fields ORDER BY field_id",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
@@ -113,8 +104,8 @@
     },
     {
       "type": "stat",
-      "title": "DQ Score",
-      "description": "(VALID + WARNING) / total × 100 de la última corrida. Verde ≥ 95%, amarillo ≥ 90%, rojo < 90%.",
+      "title": "DQ Score estricto (solo VALID)",
+      "description": "Registros VALID / total de la última corrida. Un WARNING no cuenta como limpio.",
       "targets": [
         {
           "refId": "A",
@@ -125,7 +116,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT dq_score AS \"DQ Score\" FROM gold.dq_run_metrics WHERE status = 'ok' ORDER BY run_start DESC LIMIT 1"
+          "rawSql": "SELECT dq_score AS \"DQ Score estricto\" FROM gold.dq_run_metrics WHERE status = 'ok' ORDER BY run_start DESC LIMIT 1"
         }
       ],
       "fieldConfig": {
@@ -174,7 +165,78 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 5,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "% utilizable (VALID + WARNING)",
+      "description": "Registros publicados en Silver (VALID + WARNING) / total de la última corrida.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT pct_utilizable AS \"% utilizable\" FROM gold.dq_run_metrics WHERE status = 'ok' ORDER BY run_start DESC LIMIT 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#d03b3b",
+                "value": null
+              },
+              {
+                "color": "#fab219",
+                "value": 90
+              },
+              {
+                "color": "#0ca30c",
+                "value": 95
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 19,
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
         "h": 4
       },
       "datasource": {
@@ -226,9 +288,9 @@
       },
       "id": 3,
       "gridPos": {
-        "x": 5,
+        "x": 8,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "datasource": {
@@ -280,7 +342,7 @@
       },
       "id": 4,
       "gridPos": {
-        "x": 9,
+        "x": 11,
         "y": 1,
         "w": 3,
         "h": 4
@@ -334,7 +396,7 @@
       },
       "id": 5,
       "gridPos": {
-        "x": 12,
+        "x": 14,
         "y": 1,
         "w": 3,
         "h": 4
@@ -388,7 +450,7 @@
       },
       "id": 6,
       "gridPos": {
-        "x": 15,
+        "x": 17,
         "y": 1,
         "w": 3,
         "h": 4
@@ -442,9 +504,9 @@
       },
       "id": 7,
       "gridPos": {
-        "x": 18,
+        "x": 20,
         "y": 1,
-        "w": 6,
+        "w": 4,
         "h": 4
       },
       "datasource": {
@@ -467,7 +529,7 @@
     },
     {
       "type": "timeseries",
-      "title": "DQ Score por corrida",
+      "title": "DQ Score estricto y % utilizable por corrida",
       "description": "Una marca por corrida. La línea punteada es la meta del 95%.",
       "targets": [
         {
@@ -479,15 +541,14 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT run_start AS time, dq_score AS \"DQ Score\" FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start) ORDER BY 1"
+          "rawSql": "SELECT run_start AS time, dq_score AS \"DQ Score estricto (solo VALID)\", pct_utilizable AS \"% utilizable (VALID + WARNING)\" FROM gold.dq_run_metrics WHERE status = 'ok' AND $__timeFilter(run_start) ORDER BY 1"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "#3987e5"
+            "mode": "palette-classic"
           },
           "custom": {
             "drawStyle": "line",
@@ -503,7 +564,7 @@
             "lineInterpolation": "linear"
           },
           "decimals": 2,
-          "min": 80,
+          "min": 50,
           "max": 100,
           "thresholds": {
             "mode": "absolute",
@@ -523,7 +584,7 @@
       },
       "options": {
         "legend": {
-          "showLegend": false,
+          "showLegend": true,
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -663,7 +724,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.nombre AS metric, m.temperatura_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
+          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.localidad AS metric, m.temperatura_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
         }
       ],
       "fieldConfig": {
@@ -690,7 +751,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C01.*"
+              "options": "LIT-01.*"
             },
             "properties": [
               {
@@ -705,7 +766,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C02.*"
+              "options": "LIT-02.*"
             },
             "properties": [
               {
@@ -720,7 +781,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C03.*"
+              "options": "LIT-03.*"
             },
             "properties": [
               {
@@ -735,7 +796,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C04.*"
+              "options": "LIT-04.*"
             },
             "properties": [
               {
@@ -750,7 +811,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C05.*"
+              "options": "LIT-05.*"
             },
             "properties": [
               {
@@ -765,7 +826,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C06.*"
+              "options": "LIT-06.*"
             },
             "properties": [
               {
@@ -773,6 +834,36 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-07.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e08a3c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-08.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7a5fc7"
                 }
               }
             ]
@@ -816,7 +907,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.nombre AS metric, m.humedad_suelo_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
+          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.localidad AS metric, m.humedad_suelo_promedio AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
         }
       ],
       "fieldConfig": {
@@ -843,7 +934,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C01.*"
+              "options": "LIT-01.*"
             },
             "properties": [
               {
@@ -858,7 +949,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C02.*"
+              "options": "LIT-02.*"
             },
             "properties": [
               {
@@ -873,7 +964,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C03.*"
+              "options": "LIT-03.*"
             },
             "properties": [
               {
@@ -888,7 +979,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C04.*"
+              "options": "LIT-04.*"
             },
             "properties": [
               {
@@ -903,7 +994,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C05.*"
+              "options": "LIT-05.*"
             },
             "properties": [
               {
@@ -918,7 +1009,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "C06.*"
+              "options": "LIT-06.*"
             },
             "properties": [
               {
@@ -926,6 +1017,36 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-07.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e08a3c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "LIT-08.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7a5fc7"
                 }
               }
             ]
@@ -969,7 +1090,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT f.nombre AS \"Campo\", f.provincia AS \"Provincia\", f.latitude::float AS latitude, f.longitude::float AS longitude, round(avg(m.porcentaje_calidad), 1)::float AS \"Calidad (%)\", sum(m.precipitacion_total)::float AS \"Lluvia (mm)\", round(avg(m.temperatura_promedio), 1)::float AS \"Temp. media (°C)\" FROM gold.fields f JOIN gold.daily_field_metrics m USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1, 2, 3, 4"
+          "rawSql": "SELECT f.localidad AS \"Campo\", f.provincia AS \"Provincia\", f.latitude::float AS latitude, f.longitude::float AS longitude, round(avg(m.porcentaje_calidad), 1)::float AS \"Calidad (%)\", sum(m.precipitacion_total)::float AS \"Lluvia (mm)\", round(avg(m.temperatura_promedio), 1)::float AS \"Temp. media (°C)\" FROM gold.fields f JOIN gold.daily_field_metrics m USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1, 2, 3, 4"
         }
       ],
       "fieldConfig": {
@@ -1087,7 +1208,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT f.field_id || ' · ' || f.nombre AS \"Campo\", sum(m.precipitacion_total) AS \"Lluvia (mm)\" FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1 ORDER BY 1"
+          "rawSql": "SELECT f.field_id || ' · ' || f.localidad AS \"Campo\", sum(m.precipitacion_total) AS \"Lluvia (mm)\" FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) GROUP BY 1 ORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -1146,8 +1267,8 @@
     },
     {
       "type": "status-history",
-      "title": "% de calidad por campo y día",
-      "description": "Publicados / (publicados + rechazados) por campo y día. Verde ≥ 95%, amarillo ≥ 90%, rojo < 90%.",
+      "title": "% de calidad estricto por campo y día (solo VALID)",
+      "description": "Registros VALID / (publicados + rechazados atribuibles a ese día, campo y fuente). Los WARNING no cuentan como válidos.",
       "targets": [
         {
           "refId": "A",
@@ -1158,7 +1279,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "time_series",
-          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.nombre AS metric, m.porcentaje_calidad AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
+          "rawSql": "SELECT ((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires') AS time, f.field_id || ' · ' || f.localidad AS metric, m.porcentaje_calidad AS value FROM gold.daily_field_metrics m JOIN gold.fields f USING (field_id) WHERE m.fuente = '$fuente' AND m.field_id IN ($campo) AND $__timeFilter(((m.fecha + time '12:00') AT TIME ZONE 'America/Argentina/Buenos_Aires')) ORDER BY 1, 2"
         }
       ],
       "fieldConfig": {

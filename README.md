@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED)
 
 > Prueba de concepto (POC) del Proyecto Grupal de Ingeniería de Software – UADE (2026).
-> Consultora: **UnaCocuCha SRL** · Cliente (ficticio): **Agropecuaria Los Tres Ombúes S.A.**
+> Consultora: **UnaCocuCha SRL** · Cliente (ficticio): **Grupo Agro del Litoral S.A.**
 > Documento de proyecto: [`docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf`](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf)
 
 ## Tabla de contenidos
@@ -30,9 +30,9 @@
 
 ## Contexto
 
-Una empresa agropecuaria tiene 6 campos (unas 18.000 ha en Buenos Aires, Santa Fe y Córdoba), con una estación IoT por campo. Cada estación mide temperatura, humedad ambiental, humedad del suelo, precipitación y viento cada 15 minutos.
+Una empresa agropecuaria tiene 8 campos (20.000 ha en Entre Ríos, Santa Fe y Córdoba) con 200 sensores IoT en total. Cada sensor mide temperatura, humedad ambiental, humedad del suelo, precipitación y viento, y reporta cada 15 minutos (96 lecturas por día; 19.200 registros por día entre los 200 sensores). El simulador de la POC genera una lectura por campo (8 × 96 = 768 por día), no por sensor; ver [`docs/revision/paso-1.md`](docs/revision/paso-1.md).
 
-Los datos llegan con faltantes, duplicados, valores fuera de rango, unidades incorrectas y períodos sin información. Alrededor del 8% de los registros tiene algún error, y eso termina en decisiones de riego y siembra tomadas con datos equivocados.
+Los datos llegan con faltantes, duplicados, valores fuera de rango, unidades incorrectas y períodos sin información. Alrededor del 14% de los registros tiene algún problema (tasa que simula la POC), y eso termina en decisiones de riego y siembra tomadas con datos equivocados.
 
 Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo es un pipeline que ingiera, valide, transforme y monitoree esos datos, con CI/CD.
 
@@ -49,7 +49,7 @@ Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo 
 | 100% de rechazos en quarantine con motivo; Gold sin inválidos | `_rejection_reasons` en quarantine; `test_gold_no_contiene_registros_invalidos` |
 | ≥ 12 tests de reglas y ≥ 80% de cobertura en validación | `tests/test_rules.py`; el CI falla si la cobertura de `src/validation` baja de 80% |
 | 100% de los cambios a `main` pasan por GitHub Actions | `.github/workflows/ci.yml` + *branch protection* (ver [CI/CD](#cicd)) |
-| DQ Score por campo y día; dashboard solo sobre Gold | `gold.daily_field_metrics.porcentaje_calidad`, `gold.dq_run_metrics.dq_score`, usuario `dashboard` de solo lectura |
+| DQ Score por campo y día; dashboard solo sobre Gold | `gold.daily_field_metrics.porcentaje_calidad` (estricto), `gold.dq_run_metrics.dq_score` (estricto) y `pct_utilizable`, usuario `dashboard` de solo lectura |
 | Corrida de un día de datos en < 5 minutos | El pipeline informa la duración al terminar (≈ 20 s en local) |
 
 ## Alcance
@@ -63,7 +63,7 @@ Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo 
 ```mermaid
 flowchart TD
     A[Open-Meteo<br/>Historical API · horario] --> X
-    B[Simulador IoT<br/>6 campos · cada 15 min] --> X
+    B[Simulador IoT<br/>8 campos · cada 15 min] --> X
     X[Extracción incremental<br/>watermark + linaje] --> C
     W[(etl.watermarks)] <-.-> X
     subgraph Lake["Lake Parquet (storage/)"]
@@ -95,7 +95,7 @@ flowchart TD
 
 **Reproceso:** si cambia una regla, `python -m src.main --reprocess <batch_id>` regenera Silver, Quarantine y Gold desde Bronze, sin volver a llamar a la API.
 
-**Data Quality Score** = (VALID + WARNING) / total × 100. Las decisiones de diseño están en [`docs/decisiones.md`](docs/decisiones.md).
+**Data Quality Score (estricto)** = VALID / total × 100; **% utilizable** = (VALID + WARNING) / total × 100. Las decisiones de diseño están en [`docs/decisiones.md`](docs/decisiones.md).
 
 ## Reglas de Data Quality
 
@@ -106,7 +106,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 | DQ01 | `timestamp` obligatorio | Completitud | Crítica | No nulo ni vacío | Rechazar |
 | DQ02 | `field_id` obligatorio | Completitud | Crítica | No nulo ni vacío | Rechazar |
 | DQ03 | Timestamp con formato válido | Consistencia | Crítica | ISO 8601; no futuro (tolerancia 10 min); posterior a 2000 | Rechazar |
-| DQ04 | Campo existente | Integridad | Crítica | `field_id` en `config/fields.yaml` (C01–C06) | Rechazar |
+| DQ04 | Campo existente | Integridad | Crítica | `field_id` en `config/fields.yaml` (LIT-01 a LIT-08) | Rechazar |
 | DQ05 | Sin duplicados | Unicidad | Crítica | Clave `(source, field_id, timestamp)`, también contra lotes anteriores; se conserva el primero | Rechazar |
 | DQ06 | Unidades esperadas | Consistencia | Crítica | °C · % · m³/m³ · mm · km/h | Rechazar |
 | DQ07 | Humedad ambiental | Validez | Alta | 0 ≤ humedad ≤ 100 | Rechazar |
@@ -115,6 +115,8 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 | DQ10 | Humedad del suelo | Validez | Alta | Rechazo fuera de 0 a 1 m³/m³; warning fuera de 0,02 a 0,60 | Rechazar / Warning |
 | DQ11 | Sin períodos sin datos | Completitud | Media | Hueco ≥ 30 min (IoT) o ≥ 120 min (Open-Meteo) por campo y variable | Warning |
 | DQ12 | Sin cambios anormales | Anomalía | Media | Temperatura > 8 °C/h · humedad > 40 pts/h · suelo > 0,15 m³/m³ por hora | Warning |
+
+**Un rechazo en una sola variable invalida el registro completo.** Cada registro trae las cinco variables a la vez. Si una sola incumple una regla de rechazo (por ejemplo, humedad ambiental de 135 %, regla DQ07), el registro entero va a Quarantine con ese motivo: las otras cuatro variables, aunque estén bien, no llegan a Silver ni a Gold. Un WARNING, en cambio, no rechaza: el registro se publica y queda marcado. Ver la decisión D22 en [`docs/decisiones.md`](docs/decisiones.md).
 
 ## Stack tecnológico
 
@@ -140,7 +142,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 ├── catalog/                   # Catálogo de datasets en YAML (skill data-governance)
 ├── config/
 │   ├── rules.yaml             # Reglas DQ01–DQ12 y umbrales
-│   ├── fields.yaml            # Campos del cliente (C01–C06)
+│   ├── fields.yaml            # Campos del cliente (LIT-01 a LIT-08)
 │   ├── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas (base de todos los entornos)
 │   └── environments/          # dev.yaml, staging.yaml, prod.yaml: lo que cambia en cada entorno
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
@@ -187,8 +189,8 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 git clone https://github.com/SebastianMB1/IngSoftwareETL.git
 cd IngSoftwareETL
 
-# 2. Configurar variables de entorno (completar las contraseñas)
-cp .env.example .env
+# 2. Variables de entorno: no hace falta nada, el código y Docker usan .env.example.
+#    Para usar contraseñas propias: cp .env.example .env y editarlo (.env pisa a .env.example y no se sube a Git)
 
 # 3. Levantar todo: PostgreSQL + pipeline programado en DEV, STAGING y PROD (cada 15 min) + dashboards
 docker compose up -d
@@ -223,11 +225,11 @@ Para correr las etapas por separado y explorar los datos están las notebooks de
 
 ## Entornos: dev, staging y prod
 
-El mismo código corre en tres entornos aislados. Cada uno tiene su propia base, su propio lake y su propio *scheduler*:
+El mismo código corre en tres entornos aislados. Cada uno tiene su propia base, su propio lake y su propio *scheduler*. Los tres son **locales**: corren con Docker Compose en la misma máquina (un PostgreSQL con tres bases), sin nube y sin costo adicional (decisión D17):
 
 | Entorno | Para qué | Base | Lake | Configuración |
 |---|---|---|---|---|
-| **DEV** | Probar código y reglas nuevas | `agro_dev` | `storage/dev/` | Solo simulador IoT, 20% de errores inyectados (para ejercitar todas las reglas) |
+| **DEV** | Probar código y reglas nuevas | `agro_dev` | `storage/dev/` | Solo simulador IoT, 20% de errores inyectados (para ejercitar todas las reglas); STAGING y PROD usan el 14% |
 | **STAGING** | Ensayo general antes de producción | `agro_staging` | `storage/staging/` | Igual que PROD (ambas fuentes), con datos propios |
 | **PROD** | Lo que consume el cliente | `agro_prod` | `storage/prod/` | Configuración base ([`config/pipeline.yaml`](config/pipeline.yaml)) |
 
@@ -260,9 +262,9 @@ Con `docker compose up -d`, Grafana queda en **http://localhost:3000** con tres 
 
 | Sección | Qué muestra |
 |---|---|
-| Última corrida | DQ Score, registros procesados, VALID / WARNING / INVALID y hace cuánto corrió |
-| Evolución de la calidad | DQ Score por corrida (meta 95%) y hallazgos por regla DQ01–DQ12 |
-| Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 6 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
+| Última corrida | DQ Score estricto, % utilizable, registros procesados, VALID / WARNING / INVALID y hace cuánto corrió |
+| Evolución de la calidad | DQ Score estricto y % utilizable por corrida (meta 95%) y hallazgos por regla DQ01–DQ12 |
+| Clima por campo | Temperatura y humedad del suelo diarias por campo, mapa de los 8 campos (tamaño = lluvia, color = calidad) y lluvia acumulada |
 | Calidad por campo y día | % de calidad por campo y día, y los últimos registros rechazados con su regla |
 
 Un segundo dashboard, **Flujo del ETL (Bronze · Silver · Gold)** ([`grafana/dashboards/flujo-etl.json`](grafana/dashboards/flujo-etl.json)), muestra cómo se mueve cada lote por las capas. Los dos dashboards están enlazados entre sí (botón arriba a la derecha).
@@ -335,10 +337,10 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 
 | Integrante | Rol |
 |---|---|
-| <!-- TODO --> | Project Manager |
-| <!-- TODO --> | Data Engineer |
-| <!-- TODO --> | QA / Data Quality |
-| <!-- TODO --> | DevOps / CI-CD |
+| Kiara Pisera | Project Manager |
+| Sebastian Martinez Benega | Data Engineer |
+| Joaquin Maver | QA / Data Quality |
+| Matias Posse Presa | DevOps / CI-CD |
 
 **Materia:** Ingeniería de Software – UADE · **Docente:** <!-- TODO --> · **Entrega final:** 10 de noviembre de 2026
 

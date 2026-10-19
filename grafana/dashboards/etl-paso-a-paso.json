@@ -268,7 +268,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT coalesce(t.field_id || ' · ' || f.nombre, coalesce(t.field_id, '(sin campo)')) FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t LEFT JOIN gold.fields f USING (field_id)"
+          "rawSql": "SELECT coalesce(t.field_id || ' · ' || f.localidad, coalesce(t.field_id, '(sin campo)')) FROM (SELECT * FROM gold.etl_trace WHERE trace_id = '$registro') t LEFT JOIN gold.fields f USING (field_id)"
         }
       ],
       "fieldConfig": {

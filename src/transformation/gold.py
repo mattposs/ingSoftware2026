@@ -55,6 +55,7 @@ def daily_metrics(
             humedad_suelo_promedio=("soil_moisture", "mean"),
             humedad_ambiental_promedio=("humidity", "mean"),
             cantidad_mediciones=("timestamp", "size"),
+            validos=("dq_status", lambda x: int((x == "VALID").sum())),
         )
         .reset_index()
     )
@@ -70,8 +71,10 @@ def daily_metrics(
 
     gold = gold.merge(rejected, on=GOLD_KEYS, how="left")
     rech = gold["rechazados"].fillna(0)
-    gold["porcentaje_calidad"] = (gold["cantidad_mediciones"] / (gold["cantidad_mediciones"] + rech) * 100).round(2)
-    gold = gold.drop(columns="rechazados")
+    # Mismo score estricto que la corrida (D2): solo los VALID cuentan como limpios; los WARNING están en
+    # cantidad_mediciones (se publican) pero no suman al porcentaje. Total = publicados + rechazados atribuibles.
+    gold["porcentaje_calidad"] = (gold["validos"] / (gold["cantidad_mediciones"] + rech) * 100).round(2)
+    gold = gold.drop(columns=["rechazados", "validos"])
 
     for col in ["temperatura_promedio", "humedad_suelo_promedio", "humedad_ambiental_promedio"]:
         gold[col] = gold[col].round(3)

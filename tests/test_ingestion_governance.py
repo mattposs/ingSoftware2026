@@ -71,7 +71,7 @@ def test_check_rules_detecta_configuracion_rota(monkeypatch):
 
 
 def test_catalogo_preserva_descripciones_y_genera_diccionario(tmp_path):
-    df = pd.DataFrame({"field_id": ["C01", None], "detalle": ["con | pipe\ny salto", "ok"]})
+    df = pd.DataFrame({"field_id": ["LIT-01", None], "detalle": ["con | pipe\ny salto", "ok"]})
     mgr = CatalogManager(str(tmp_path / "catalog"))
     path = mgr.register_or_update_dataset("agro", "x", "silver", "desc", "storage/x",
                                           extract_column_metadata(df), {"field_id": "Campo."})

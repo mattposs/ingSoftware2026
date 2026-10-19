@@ -187,7 +187,7 @@ def add_gold_step(engine: Engine, batch_id: str, metrics: pd.DataFrame) -> None:
             ("Humedad del suelo promedio", f"{m['humedad_suelo_promedio']} m³/m³"),
             ("Humedad ambiental promedio", f"{m['humedad_ambiental_promedio']} %"),
             ("Mediciones del día", f"{m['cantidad_mediciones']} (este registro es una de ellas)"),
-            ("% de calidad del día", f"{m['porcentaje_calidad']} %"),
+            ("% de calidad del día (estricto: solo VALID)", f"{m['porcentaje_calidad']} %"),
         ]
         rows += [{"trace_id": t.trace_id, "step": 5, "orden": i, "dato": d, "valor": v, "resultado": None}
                  for i, (d, v) in enumerate(values, start=1)]

@@ -25,7 +25,7 @@ LINEAGE = {
 
 MEASUREMENTS = {
     "timestamp": "Fecha y hora de la medición. En Bronze es el texto crudo recibido; desde Silver, datetime UTC.",
-    "field_id": "Identificador del campo del cliente (C01 a C06, ver gold.fields).",
+    "field_id": "Identificador del campo del cliente (LIT-01 a LIT-08, ver gold.fields).",
     "latitude": "Latitud de la estación del campo, en grados decimales.",
     "longitude": "Longitud de la estación del campo, en grados decimales.",
     "temperature": "Temperatura del aire a 2 m, en °C.",
@@ -49,15 +49,17 @@ MEASUREMENTS = {
 GOLD = {
     "fecha": "Día de las mediciones en hora local del negocio (America/Argentina/Buenos_Aires).",
     "fuente": "Fuente de las mediciones agregadas (open_meteo o iot_simulator).",
-    "nombre": "Nombre del campo.",
+    "localidad": "Localidad donde está el campo.",
     "provincia": "Provincia donde está el campo.",
     "hectareas": "Superficie del campo en hectáreas.",
+    "sensores": "Cantidad de sensores IoT instalados en el campo.",
     "temperatura_promedio": "Temperatura promedio del día, en °C, solo con registros VALID y WARNING.",
     "precipitacion_total": "Precipitación total del día, en mm.",
     "humedad_suelo_promedio": "Humedad del suelo promedio del día, en m³/m³.",
     "humedad_ambiental_promedio": "Humedad relativa ambiental promedio del día, en %.",
     "cantidad_mediciones": "Cantidad de registros publicados (VALID + WARNING) que componen el indicador.",
-    "porcentaje_calidad": "Publicados / (publicados + rechazados atribuibles a ese día, campo y fuente) × 100.",
+    "porcentaje_calidad": "Score estricto del día: registros VALID / (publicados + rechazados atribuibles a ese día, "
+                          "campo y fuente) × 100. Los WARNING no cuentan como válidos.",
     "_updated_at": "Última vez que se recalculó la fila.",
     "run_start": "Inicio de la corrida (UTC).",
     "run_end": "Fin de la corrida (UTC); vacío si sigue en curso o falló antes de terminar.",
@@ -66,7 +68,8 @@ GOLD = {
     "valid": "Registros sin hallazgos.",
     "warning": "Registros publicados con al menos un warning.",
     "invalid": "Registros rechazados (enviados a quarantine).",
-    "dq_score": "Data Quality Score = (valid + warning) / total × 100.",
+    "dq_score": "Data Quality Score estricto = valid / total × 100 (los warning no cuentan).",
+    "pct_utilizable": "% utilizable = (valid + warning) / total × 100: registros publicados en Silver.",
     "error_id": "Identificador del hallazgo.",
     "detected_at": "Instante UTC en que se detectó el hallazgo.",
     "measured_at": "Fecha y hora de la medición afectada (vacío si el timestamp era inválido).",
@@ -110,7 +113,8 @@ def _datasets(settings, cfg) -> list[dict]:
          "location": f"storage/{settings.environment}/bronze/{domain}/open_meteo/",
          "load": lambda: lake.read_layer(base, "bronze", domain, "open_meteo")},
         {"layer": "bronze", "entity": "iot_simulator",
-         "description": "Lecturas de las 6 estaciones IoT simuladas cada 15 minutos, con errores inyectados (append-only).",
+         "description": "Lecturas de las estaciones IoT simuladas (una por campo, 8 campos) cada 15 minutos, "
+                        "con errores inyectados (append-only).",
          "location": f"storage/{settings.environment}/bronze/{domain}/iot_simulator/",
          "load": lambda: lake.read_layer(base, "bronze", domain, "iot_simulator")},
         {"layer": "silver", "entity": entity,
