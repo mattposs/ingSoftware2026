@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simulador del Pipeline DataOps</title>
+<title>Simulador del Pipeline DataOps con Docker</title>
 <style>
   :root{
     --bg:#eef2f7; --panel:#ffffff; --ink:#1d2733; --muted:#5b6b7b; --line:#c9d3de;
     --ok:#1f9d55; --warn:#e0a100; --bad:#d64545; --info:#2b7bd6; --off:#aab4bf; --brand:#1f5fa8;
-    --grid:#dfe6ee;
+    --grid:#dfe6ee; --docker:#2496ed; --dockerbg:rgba(36,150,237,.07);
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --bg:#141a21; --panel:#1c242d; --ink:#e6edf3; --muted:#9aa9b8; --line:#33414f;
-      --grid:#212b36; --off:#56646f;
+      --grid:#212b36; --off:#56646f; --dockerbg:rgba(36,150,237,.12);
     }
   }
   *{box-sizing:border-box}
@@ -25,35 +25,45 @@
   .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
   .tab{background:rgba(255,255,255,.14);border:0;color:#fff;padding:7px 14px;border-radius:6px 6px 0 0;cursor:pointer;font:inherit}
   .tab[aria-selected="true"]{background:var(--panel);color:var(--brand);font-weight:650}
-  main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:10px;padding:10px;min-height:0}
-  @media (max-width:1000px){ main{grid-template-columns:1fr} }
+  main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:10px;padding:10px;min-height:0}
+  @media (max-width:1050px){ main{grid-template-columns:1fr} }
   .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-height:0}
   .card h2{font-size:13px;margin:0;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
   .canvas-wrap{position:relative;overflow:auto}
-  svg#net{display:block;width:100%;min-width:900px;height:auto;background:
+  svg#net{display:block;width:100%;min-width:1000px;height:auto;background:
       linear-gradient(var(--grid) 1px,transparent 1px) 0 0/40px 40px,
       linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/40px 40px, var(--panel)}
   .dev{cursor:pointer}
   .dev .box{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
   .dev:hover .box,.dev:focus .box{stroke:var(--info);stroke-width:2.5}
   .dev:focus{outline:none}
-  .dev.off{opacity:.38;filter:grayscale(1)}
+  .dev.off{opacity:.36;filter:grayscale(1)}
   .dev.at .box{stroke:var(--info);stroke-width:3.5}
   .dev.at.s-OK .box{stroke:var(--ok)} .dev.at.s-WARNING .box{stroke:var(--warn)} .dev.at.s-REJECT .box{stroke:var(--bad)}
   .dev text{fill:var(--ink);font-size:15px;text-anchor:middle;pointer-events:none}
   .dev text.sub{fill:var(--muted);font-size:11.5px}
+  .dev text.tag{fill:var(--docker);font-size:10.5px;font-weight:600}
   .link{stroke:var(--off);stroke-width:2.5;fill:none}
   .link.ctl{stroke-dasharray:6 5;stroke-width:2}
   .link.on{stroke:var(--ok)}
-  .link.pulse{stroke:var(--info);stroke-width:3.5}
+  .link.pulse{stroke:var(--info);stroke-width:4}
+  .lnk-t{fill:var(--muted);font-size:11.5px;text-anchor:middle;paint-order:stroke;stroke:var(--panel);stroke-width:4px}
   .lamp{fill:var(--off)} .lamp.on{fill:var(--ok)}
-  .zone{fill:none;stroke:var(--line);stroke-dasharray:3 5;stroke-width:1.5}
-  .zone-t{fill:var(--muted);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+  .frame{fill:var(--dockerbg);stroke:var(--docker);stroke-width:2}
+  .frame.host{fill:none;stroke:var(--line);stroke-dasharray:4 6}
+  .frame.out{fill:none;stroke:var(--line);stroke-dasharray:3 5;stroke-width:1.5}
+  .fhead{cursor:pointer}
+  .fhead:hover rect.hbg{fill:rgba(36,150,237,.2)}
+  .ft{fill:var(--ink);font-size:14px;font-weight:650}
+  .fs{fill:var(--muted);font-size:11.5px}
+  .zone-t{fill:var(--muted);font-size:12.5px;letter-spacing:.05em;text-transform:uppercase}
+  .st-pill{font-size:11.5px;font-weight:650}
   #pdu{pointer-events:none}
   .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
   button.btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit}
   button.btn:hover{border-color:var(--info)} button.btn:disabled{opacity:.45;cursor:default}
   button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  button.docker{background:var(--docker);color:#fff;border-color:var(--docker)}
   .grow{flex:1}
   label.sp{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12.5px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);align-items:center}
@@ -61,7 +71,7 @@
   .chip[aria-pressed="true"]{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand);font-weight:600}
   .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
   .side{display:flex;flex-direction:column;gap:10px;min-height:0}
-  .events{overflow:auto;max-height:260px}
+  .events{overflow:auto;max-height:250px}
   table{border-collapse:collapse;width:100%;font-size:12.5px}
   th,td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
   th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600}
@@ -71,38 +81,45 @@
   .detail{padding:10px 12px;overflow:auto;flex:1;min-height:150px}
   .detail h3{margin:0 0 4px;font-size:15px}
   .detail p{margin:6px 0}
+  .dnote{border-left:4px solid var(--docker);background:var(--dockerbg);padding:7px 10px;border-radius:0 6px 6px 0;margin:8px 0;font-size:13px}
+  .dnote b.dk{color:var(--docker)}
   pre{background:#0f1720;color:#d6e2ee;padding:10px;border-radius:6px;overflow:auto;font:12px/1.5 Consolas,Menlo,monospace;margin:8px 0;white-space:pre-wrap}
+  code{font:12.5px Consolas,Menlo,monospace;background:rgba(127,127,127,.15);padding:1px 4px;border-radius:3px}
   .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px;margin:8px 0}
   .kv b{color:var(--muted);font-weight:600}
   .rules td.r-OK{color:var(--ok)} .rules td.r-WARNING{color:var(--warn);font-weight:600} .rules td.r-REJECT{color:var(--bad);font-weight:700}
   .hint{color:var(--muted);font-size:12.5px}
-  dialog{border:1px solid var(--line);border-radius:10px;padding:0;background:var(--panel);color:var(--ink);width:min(720px,94vw);max-height:90vh}
+  dialog{border:1px solid var(--line);border-radius:10px;padding:0;background:var(--panel);color:var(--ink);width:min(860px,95vw);max-height:92vh}
   dialog::backdrop{background:rgba(10,20,30,.5)}
   .dh{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--brand);color:#fff}
+  .dh.dk{background:var(--docker)}
   .dh h3{margin:0;font-size:15px;flex:1}
   .dh button{background:none;border:0;color:#fff;font-size:20px;cursor:pointer}
-  .dtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;background:var(--bg)}
+  .dtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 10px;background:var(--bg);flex-wrap:wrap}
   .dtab{border:0;background:none;color:var(--muted);padding:8px 12px;cursor:pointer;font:inherit;border-bottom:3px solid transparent}
   .dtab[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand);font-weight:650}
-  .dbody{padding:12px 16px;overflow:auto;max-height:62vh}
+  .dbody{padding:12px 16px;overflow:auto;max-height:68vh}
+  table.ann td:first-child{width:46%;font:12px/1.45 Consolas,Menlo,monospace;white-space:pre-wrap;background:rgba(127,127,127,.08)}
+  table.ann td.sec,table.cmd td.sec{background:var(--dockerbg);font:650 12.5px system-ui;color:var(--docker);width:auto}
+  table.cmd td:first-child{font:12px/1.45 Consolas,Menlo,monospace;white-space:pre-wrap;width:48%}
   form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
   form.f label{display:flex;flex-direction:column;font-size:12.5px;color:var(--muted);gap:3px}
   form.f input,form.f select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit}
   form.f .full{grid-column:1/-1}
   form.f .chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
   .legend{display:flex;flex-wrap:wrap;gap:12px;padding:6px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
-  .sr{position:absolute;left:-9999px}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>Simulador del Pipeline DataOps · estilo Packet Tracer</h1>
+    <h1>Simulador del Pipeline DataOps · corre en Docker Compose</h1>
     <div class="sub">Grupo Agro del Litoral S.A. · 8 campos · 200 sensores · Bronze → Silver / Quarantine → Gold → Grafana</div>
   </div>
   <div class="tabs" role="tablist" aria-label="Modo">
-    <button class="tab" role="tab" id="tab-run" aria-selected="true">Simulación: viaje de un registro</button>
-    <button class="tab" role="tab" id="tab-setup" aria-selected="false">Puesta en marcha: cómo se crea todo</button>
+    <button class="tab" role="tab" id="tab-run" aria-selected="true">1 · Viaje de un registro</button>
+    <button class="tab" role="tab" id="tab-docker" aria-selected="false">2 · Docker Compose paso a paso</button>
+    <button class="tab" role="tab" id="tab-proj" aria-selected="false">3 · Proyecto completo (Git y CI/CD)</button>
   </div>
 </header>
 
@@ -110,13 +127,14 @@
   <section class="card" aria-label="Topología">
     <div class="chips" id="pduBar"></div>
     <div class="canvas-wrap">
-      <svg id="net" viewBox="0 0 1400 740" role="img" aria-label="Topología lógica del pipeline"></svg>
+      <svg id="net" viewBox="0 0 1500 910" role="img" aria-label="Topología lógica: contenedores Docker del pipeline"></svg>
     </div>
     <div class="legend">
-      <span><span class="dot" style="background:var(--ok)"></span> VALID / OK</span>
-      <span><span class="dot" style="background:var(--warn)"></span> WARNING (se publica con aviso)</span>
-      <span><span class="dot" style="background:var(--bad)"></span> INVALID / REJECT (va a Quarantine)</span>
-      <span>Línea continua: datos · Línea punteada: control o configuración · Clic en un dispositivo para abrir su ventana de configuración</span>
+      <span><span class="dot" style="background:var(--docker)"></span> Recuadro azul = contenedor Docker (clic en su título para ver su ficha)</span>
+      <span><span class="dot" style="background:var(--ok)"></span> OK</span>
+      <span><span class="dot" style="background:var(--warn)"></span> WARNING</span>
+      <span><span class="dot" style="background:var(--bad)"></span> REJECT</span>
+      <span>Línea continua: datos · Línea punteada: control o construcción · Clic en un dispositivo para abrirlo</span>
     </div>
     <div class="controls">
       <button class="btn" id="bReset" title="Volver al inicio">⏮ Reiniciar</button>
@@ -125,6 +143,9 @@
       <button class="btn" id="bPlay" title="Reproducir automáticamente">▶ Auto</button>
       <label class="sp">Velocidad <input type="range" id="speed" min="1" max="5" value="3"></label>
       <span class="grow"></span>
+      <button class="btn docker" id="bYml">📄 docker-compose.yml explicado</button>
+      <button class="btn docker" id="bDf">📄 Dockerfile explicado</button>
+      <button class="btn docker" id="bCmd">⌨ Comandos Docker</button>
       <span class="hint" id="progress">Evento 0 de 0</span>
     </div>
   </section>
@@ -136,13 +157,13 @@
     </section>
     <section class="card" style="flex:1">
       <h2>Información del evento</h2>
-      <div class="detail" id="detail"><p class="hint">Elegí un paquete arriba y apretá <b>Capturar / Avanzar</b> para seguirlo paso a paso, o <b>Auto</b> para verlo correr solo.</p></div>
+      <div class="detail" id="detail"></div>
     </section>
   </aside>
 </main>
 
 <dialog id="dlg" aria-labelledby="dlgTitle">
-  <div class="dh"><h3 id="dlgTitle"></h3><button id="dlgX" aria-label="Cerrar">×</button></div>
+  <div class="dh" id="dlgHead"><h3 id="dlgTitle"></h3><button id="dlgX" aria-label="Cerrar">×</button></div>
   <div class="dtabs" role="tablist" id="dlgTabs"></div>
   <div class="dbody" id="dlgBody"></div>
 </dialog>
@@ -185,7 +206,6 @@ function blank(v){ return v === null || v === undefined || String(v).trim() === 
 function evalRules(r){
   const out = [];
   const add = (id, result, detalle) => out.push({id, name:RULE_NAMES[id], result, detalle});
-  // Tanda 1: identificación
   add("DQ01", blank(r.timestamp) ? "REJECT" : "OK", blank(r.timestamp) ? "timestamp nulo o vacío" : "tiene timestamp");
   add("DQ02", blank(r.field_id) ? "REJECT" : "OK", blank(r.field_id) ? "field_id nulo o vacío" : "tiene field_id");
   let d3 = ["OK","formato ISO 8601 correcto"];
@@ -200,7 +220,6 @@ function evalRules(r){
   add("DQ04", !fieldBlank && !FIELD_IDS.includes(r.field_id) ? "REJECT" : "OK",
       !fieldBlank && !FIELD_IDS.includes(r.field_id) ? "field_id inexistente" : "campo conocido");
   add("DQ05", r.dup ? "REJECT" : "OK", r.dup ? "ya llegó (misma fuente, campo y timestamp); se conserva el primero" : "primera vez que llega");
-  // Tanda 2: valores
   const unitOk = r.temperature_unit === "°C";
   add("DQ06", unitOk ? "OK" : "REJECT", unitOk ? "°C, %, m³/m³, mm, km/h" : "temperatura en " + r.temperature_unit + " (se espera °C)");
   const h = Number(r.humidity);
@@ -220,7 +239,6 @@ function evalRules(r){
   else if (so < 0.02 || so > 0.60) d10 = ["WARNING","fuera del rango esperado [0,02, 0,60] (se publica con aviso)"];
   else d10 = ["OK", so + " m³/m³ dentro de [0,02, 0,60]"];
   add("DQ10", d10[0], d10[1]);
-  // Tanda 3: secuencia (solo si el registro se pudo identificar y no fue rechazado antes)
   const rejectedBefore = out.some(o => o.result === "REJECT");
   add("DQ11", !rejectedBefore && r.gap ? "WARNING" : "OK",
       rejectedBefore ? "no se compara: el registro ya fue rechazado" : (r.gap ? "hueco de 30 min o más con la lectura anterior" : "lecturas consecutivas"));
@@ -254,33 +272,40 @@ function buildRun(pdu){
   const tanda = (from, to) => rules.filter(x => { const n = +x.id.slice(2); return n >= from && n <= to; });
   const resumen = list => list.filter(x => x.result !== "OK").map(x => x.id + " " + x.result).join(", ") || "todas OK";
   const g = goldImpact(status);
+  const st = list => list.some(x => x.result === "REJECT") ? "REJECT" : list.some(x => x.result === "WARNING") ? "WARNING" : "OK";
+  const t1 = tanda(1,5), t2 = tanda(6,10), t3 = tanda(11,12);
   const steps = [];
   steps.push({from:"sched", to:"extract", type:"Disparo", status:"OK", title:"El scheduler arranca una corrida",
-    text:"Cada 900 segundos (15 min, la frecuencia de los sensores) el scheduler llama a pipeline.run_all(). Si una corrida falla, se registra y la siguiente se ejecuta igual.",
+    text:"Dentro del contenedor scheduler, el proceso python -m src.scheduler llama a pipeline.run_all() cada 900 segundos (15 min, la frecuencia de los sensores). Si una corrida falla, se registra y la siguiente se ejecuta igual.",
+    docker:"Este proceso es el <b>comando del contenedor</b> (<code>command: [\"python\",\"-m\",\"src.scheduler\"]</code>). Docker lo mantiene vivo con <code>restart: unless-stopped</code>: si el contenedor se cae, Docker lo levanta de nuevo.",
     file:"src/scheduler.py", code:"while True:\n    pipeline.run_all(engine)\n    time.sleep(interval)"});
-  steps.push({from:"extract", to:"state", type:"Consulta", status:"OK", title:"Se pide el watermark de cada fuente",
+  steps.push({from:"extract", to:"wm", type:"Consulta", status:"OK", title:"Se pide el watermark de cada fuente",
     text:"El pipeline es incremental: pregunta hasta dónde procesó la última vez para traer solo datos nuevos. La ventana es (watermark, ahora].",
+    docker:"La consulta sale por la <b>red interna de Docker Compose</b>. El nombre <code>postgres</code> (variable <code>POSTGRES_HOST=postgres</code>) lo resuelve el DNS de Docker a la IP del contenedor de PostgreSQL, puerto 5432.",
     file:"src/common/state.py", code:"SELECT watermark FROM etl.watermarks\nWHERE domain = 'agro' AND entity = '" + src + "'"});
-  steps.push({from:"state", to:"extract", type:"Respuesta", status:"OK", title:"Vuelve la ventana a pedir",
+  steps.push({from:"wm", to:"extract", type:"Respuesta", status:"OK", title:"Vuelve la ventana a pedir",
     text:"Con el watermark se calcula la ventana. Para el simulador termina en el último cuarto de hora cumplido; para Open-Meteo, en hoy menos 5 días (la API publica con retraso).",
     file:"src/ingestion/iot_simulator.py · open_meteo.py", code:"win = window_fn(state.get(domain, source), now, src_cfg)"});
   steps.push({from: src === "open_meteo" ? "meteo" : "iot", to:"extract", type:"Lectura cruda", status:"OK", title:"Llega la lectura de la fuente",
     text: src === "open_meteo"
       ? "Open-Meteo entrega datos horarios en JSON. Si la llamada falla, reintenta hasta 3 veces esperando 2 y 4 segundos entre intentos."
-      : "El simulador genera una lectura por campo cada 15 minutos con las 5 variables y, a propósito, inyecta errores (14 % en STAGING y PROD, 20 % en DEV).",
+      : "El simulador (código que corre dentro del mismo contenedor) genera una lectura por campo cada 15 minutos con las 5 variables y, a propósito, inyecta errores (14 % en STAGING y PROD, 20 % en DEV).",
+    docker: src === "open_meteo"
+      ? "El contenedor sale a <b>Internet</b> (HTTPS) hacia archive-api.open-meteo.com. No hace falta publicar ningún puerto: Docker permite conexiones salientes por defecto."
+      : "El simulador no es otro contenedor: es código de <code>src/ingestion/iot_simulator.py</code> dentro de la imagen <code>agro-pipeline</code>.",
     file: src === "open_meteo" ? "src/ingestion/open_meteo.py" : "src/ingestion/iot_simulator.py",
     record:"raw"});
   steps.push({from:"extract", to:"bronze", type:"Escritura", status:"OK", title:"Bronze: se guarda tal cual llegó, con linaje",
     text:"Se agregan tres columnas de linaje (_batch_id, _ingested_at, _source_system) y se escribe un Parquet. Bronze es append-only: un lote nunca se reescribe. Después recién avanza el watermark.",
+    docker:"El contenedor escribe en <code>/app/storage</code>, que es un <b>bind mount</b> de la carpeta <code>./storage</code> de tu PC (<code>volumes: ./storage:/app/storage</code>). Por eso el lake sobrevive aunque borres el contenedor, y lo podés abrir desde el Explorador de archivos.",
     file:"src/common/lake.py", code:"df = lake.enrich_with_lineage(df, source_system, batch_id)\nlake.write_parquet(df, ..., 'bronze', ...)\nstate.set(domain, source, win[1], batch_id)",
     record:"bronze"});
   steps.push({from:"bronze", to:"dq", type:"Lectura del lote", status:"OK", title:"Silver: se lee el lote y el histórico",
     text:"run_silver lee el lote de Bronze y el Silver anterior. El histórico sirve para las reglas que comparan con la lectura previa (duplicados, huecos y saltos), porque esa lectura suele estar en otro lote.",
     file:"src/pipeline.py", code:"batch = pd.concat([lake.read_layer(..., 'bronze', ...)])\ncontext = lake.read_layer(..., 'silver', ...)\nresult = validate(batch, rules, field_ids, context=context)"});
-  const t1 = tanda(1,5), t2 = tanda(6,10), t3 = tanda(11,12);
-  const st = list => list.some(x => x.result === "REJECT") ? "REJECT" : list.some(x => x.result === "WARNING") ? "WARNING" : "OK";
   steps.push({from:"dq", to:"dq", type:"Tanda 1", status:st(t1), title:"Tanda 1 · identificación (DQ01 a DQ05)",
     text:"¿Se puede identificar el registro? Sin fecha o sin campo no se puede usar. Resultado: " + resumen(t1) + ".", rules:t1,
+    docker:"Las reglas leen sus umbrales de <code>config/rules.yaml</code>, que está <b>dentro de la imagen</b> (<code>COPY config/ config/</code> en el Dockerfile). Si cambiás un umbral hay que reconstruir la imagen con <code>docker compose up -d --build</code>.",
     file:"src/validation/engine.py"});
   steps.push({from:"dq", to:"dq", type:"Tanda 2", status:st(t2), title:"Tanda 2 · valores (DQ06 a DQ10)",
     text:"Unidades y rangos. Algunas reglas solo avisan (WARNING) y otras rechazan (REJECT). Resultado: " + resumen(t2) + ".", rules:t2,
@@ -299,50 +324,114 @@ function buildRun(pdu){
   if (status === "INVALID"){
     steps.push({from:"dq", to:"quar", type:"Rechazo", status:"REJECT", title:"Quarantine: se aparta con el motivo",
       text:"El registro va a Quarantine tal como llegó de Bronze, con _rejection_reasons = " + rejected.map(x => x.id).join(";") + " y la fecha del rechazo. Nunca se descarta en silencio.",
+      docker:"Se escribe en <code>./storage/&lt;entorno&gt;/quarantine/…</code> (mismo bind mount que Bronze).",
       file:"src/validation/engine.py (_classify)", code:"quarantine['_rejection_reasons'] = '" + rejected.map(x => x.id).join(";") + "'", record:"quarantine"});
-    steps.push({from:"quar", to:"gold", type:"Métricas", status:"WARNING", title:"Gold: no entra a los promedios, pero baja el % de calidad",
-      text:"Gold nunca recibe el registro inválido. Pero cuenta como rechazado en el porcentaje de calidad de su día. Ejemplo con 95 lecturas VALID previas ese día: " + g.pctBefore + " % → " + g.pctAfter + " %. También se guarda el detalle en gold.dq_errors y los contadores en gold.dq_run_metrics.",
-      file:"src/transformation/gold.py", code:"porcentaje_calidad = VALID / (publicados + rechazados) × 100\n" + g.before.valid + "/" + (g.before.pub + g.before.rej) + " → " + g.after.valid + "/" + (g.after.pub + g.after.rej)});
+    steps.push({from:"quar", to:"goldb", type:"Lectura", status:"WARNING", title:"La transformación Gold lee Quarantine y Silver",
+      text:"run_gold necesita contar los rechazados de cada día, campo y fuente para calcular el porcentaje de calidad. El registro inválido nunca entra a los promedios.",
+      file:"src/pipeline.py", code:"keys = gold.affected_keys(silver_batch, tz)\nmetrics = gold.daily_metrics(silver_all, quarantine_all, keys, tz, batch_id)"});
   } else {
     steps.push({from:"dq", to:"silver", type:"Publicación", status: ST_LABEL[status], title:"Silver: registro tipado y publicado",
       text:"Se convierte el timestamp a fecha UTC, se agrega dq_status" + (status === "WARNING" ? " = WARNING y _dq_warnings = " + warned.map(x => x.id).join(";") : " = VALID") + " y se escribe en Parquet.",
+      docker:"Se escribe en <code>./storage/&lt;entorno&gt;/silver/…</code> (bind mount).",
       file:"src/validation/engine.py (_classify)", record:"silver"});
-    steps.push({from:"silver", to:"gold", type:"Agregación", status: ST_LABEL[status], title:"Gold: se recalcula el indicador del día",
-      text:"Para el día, campo y fuente tocados se recalcula el indicador con TODO Silver y se hace upsert (si existe actualiza, si no inserta). Ejemplo con 95 lecturas VALID previas: porcentaje_calidad " + g.pctBefore + " % → " + g.pctAfter + " %" + (status === "WARNING" ? " (el WARNING se publica pero no suma como limpio)." : "."),
-      file:"src/transformation/gold.py", code:"porcentaje_calidad = VALID / (publicados + rechazados) × 100\n" + g.before.valid + "/" + (g.before.pub + g.before.rej) + " → " + g.after.valid + "/" + (g.after.pub + g.after.rej)});
+    steps.push({from:"silver", to:"goldb", type:"Lectura", status: ST_LABEL[status], title:"La transformación Gold lee todo Silver",
+      text:"Para el día, campo y fuente tocados se recalcula el indicador con TODO Silver (no solo con el lote nuevo), para que el promedio sea correcto aunque el día llegue en varios lotes.",
+      file:"src/transformation/gold.py", code:"keys = gold.affected_keys(silver_batch, tz)\nmetrics = gold.daily_metrics(silver_all, quarantine_all, keys, tz, batch_id)"});
   }
+  steps.push({from:"goldb", to:"gold", type:"Upsert", status: status === "INVALID" ? "WARNING" : ST_LABEL[status], title:"Gold: se guarda en PostgreSQL con upsert",
+    text: (status === "INVALID"
+        ? "El registro inválido no aporta a los promedios, pero baja el % de calidad de su día. Ejemplo con 95 lecturas VALID previas: " + g.pctBefore + " % → " + g.pctAfter + " %."
+        : "Ejemplo con 95 lecturas VALID previas ese día: porcentaje_calidad " + g.pctBefore + " % → " + g.pctAfter + " %" + (status === "WARNING" ? " (el WARNING se publica pero no suma como limpio)." : "."))
+      + " Se hace upsert: si la fila existe se actualiza, si no se inserta. También se guardan gold.dq_errors y gold.dq_run_metrics.",
+    docker:"Otra vez por la red interna: <code>postgres:5432</code>, con el usuario <code>pipeline</code> (mínimo privilegio). PostgreSQL guarda los datos en el <b>volumen Docker</b> <code>pgdata</code> (<code>/var/lib/postgresql/data</code>): sobrevive a <code>docker compose down</code>; solo se borra con <code>down -v</code>.",
+    file:"src/transformation/gold.py", code:"porcentaje_calidad = VALID / (publicados + rechazados) × 100\n" + g.before.valid + "/" + (g.before.pub + g.before.rej) + " → " + g.after.valid + "/" + (g.after.pub + g.after.rej)});
   steps.push({from:"gold", to:"graf", type:"Consulta", status:"OK", title:"Grafana lee solo Gold",
     text:"Los dashboards consultan únicamente gold.* con el usuario dashboard, que es de solo lectura. Nunca ven datos crudos ni rechazados. Muestran el DQ Score estricto y el % utilizable, rotulados.",
+    docker:"El contenedor <code>grafana</code> se conecta a <code>postgres:5432</code> por la red interna. La fuente de datos la crea sola desde <code>grafana/provisioning/</code> (montado en solo lectura, <code>:ro</code>).",
     file:"grafana/dashboards/", code:"SELECT dq_score, pct_utilizable\nFROM gold.dq_run_metrics\nWHERE status = 'ok' ORDER BY run_start DESC LIMIT 1"});
+  steps.push({from:"graf", to:"browser", type:"Dashboard", status:"OK", title:"El alumno ve el dashboard en su navegador",
+    text:"El navegador abre http://localhost:3000 y ve los 3 dashboards. El selector Entorno (arriba a la izquierda) cambia entre DEV, STAGING y PROD.",
+    docker:"<code>ports: \"3000:3000\"</code> <b>publica</b> el puerto 3000 del contenedor en el puerto 3000 de tu PC (formato <code>host:contenedor</code>). Sin esa línea, Grafana solo sería accesible desde otros contenedores.",
+    file:"docker-compose.yml (servicio grafana)", code:"http://localhost:3000"});
   return {steps, rules, status};
 }
 
-const SETUP = [
-  {on:["git"], from:"git", to:"git", type:"Código", status:"OK", title:"1 · Se obtiene el código",
-   text:"git clone del repositorio y trabajar en una rama feature/*. main solo se actualiza por Pull Request desde staging.", file:".github/workflows/", code:"git clone https://github.com/SebastianMB1/IngSoftwareETL.git\ngit checkout feature/entornos-etl-paso-a-paso"},
-  {on:["cfg"], from:"git", to:"cfg", type:"Configuración", status:"OK", title:"2 · Configuración versionada",
-   text:"Las reglas, los campos y los parámetros viven en YAML: cambiar un umbral no requiere tocar código. Las contraseñas salen de .env.example (valores de desarrollo) y, si existe, .env las pisa; .env no se sube a Git.", file:"config/ · .env.example", code:"config/pipeline.yaml   fuentes, ventanas, tasa de error\nconfig/rules.yaml      12 reglas y umbrales\nconfig/fields.yaml     8 campos, 20.000 ha, 200 sensores\nconfig/environments/   dev, staging, prod"},
-  {on:["pg"], from:"cfg", to:"pg", type:"docker compose up", status:"OK", title:"3 · Arranca PostgreSQL 16",
-   text:"docker compose up -d --build construye la imagen (python:3.11-slim, usuario no root) y levanta PostgreSQL. Al crearse el contenedor, corren los scripts de sql/.", file:"docker-compose.yml · Dockerfile", code:"docker compose up -d --build"},
-  {on:["state"], from:"pg", to:"state", type:"Esquema", status:"OK", title:"4 · Se crean las 3 bases y las tablas",
-   text:"00_entornos.sh crea agro_dev, agro_staging y agro_prod y aplica sql/schema/01_schema.sql en cada una: esquemas etl y gold, con watermarks, fields, daily_field_metrics, dq_run_metrics, dq_errors y las tablas de trazabilidad. Es idempotente: sirve también para migrar una base existente.", file:"sql/00_entornos.sh · sql/schema/01_schema.sql", code:"CREATE DATABASE agro_dev;   -- también staging y prod\npsql -f 01_schema.sql"},
-  {on:[], from:"pg", to:"pg", type:"Seguridad", status:"OK", title:"5 · Se crean los usuarios de mínimo privilegio",
-   text:"99_app_users.sh crea el usuario pipeline (puede escribir) y el usuario dashboard (solo lectura sobre gold). Así Grafana nunca puede modificar datos.", file:"sql/99_app_users.sh", code:"pipeline  → lee y escribe\ndashboard → solo SELECT en gold"},
-  {on:["sched"], from:"pg", to:"sched", type:"Arranque", status:"OK", title:"6 · Arrancan los schedulers (uno por entorno)",
-   text:"Tres contenedores con la misma imagen y distinto APP_ENV: DEV (solo simulador, 20 % de errores), STAGING y PROD (ambas fuentes, 14 %). Cada uno con su base y su lake.", file:"docker-compose.yml", code:"scheduler-dev      APP_ENV=dev\nscheduler-staging  APP_ENV=staging\nscheduler-prod     APP_ENV=prod"},
-  {on:["extract","meteo","iot","bronze","dq","silver","quar"], from:"sched", to:"extract", type:"Primera corrida", status:"OK", title:"7 · La primera corrida crea el lake",
-   text:"Sin watermark, la primera corrida usa una ventana inicial. Aparecen las carpetas storage/<entorno>/bronze, silver y quarantine con sus Parquet, y las filas de gold.", file:"src/pipeline.py · src/main.py", code:"python -m src.main\n[BRONZE] 763 registros → …/bronze/agro/iot_simulator/…\n[SILVER] 1248 registros\n[QUARANTINE] 91 registros"},
-  {on:["gold"], from:"silver", to:"gold", type:"Gold", status:"OK", title:"8 · Se llenan las tablas de Gold",
-   text:"Se sincronizan los 8 campos en gold.fields, se calculan los indicadores diarios y se guarda el resumen de la corrida con el score estricto y el % utilizable.", file:"src/transformation/gold.py", code:"[DQ] total=1339 valid=1191 warning=57 invalid=91 score=88.95% utilizable=93.2%\n[DB] Upsert de 48 filas en gold.daily_field_metrics"},
-  {on:["graf"], from:"gold", to:"graf", type:"Dashboards", status:"OK", title:"9 · Grafana se provisiona sola",
-   text:"Grafana monta grafana/provisioning y grafana/dashboards: crea la fuente de datos (con el usuario de solo lectura) y los 3 dashboards. Selector de entorno arriba a la izquierda. Se ve en localhost:3000.", file:"grafana/", code:"calidad-datos · flujo-etl · etl-paso-a-paso"},
-  {on:["ci"], from:"git", to:"ci", type:"CI/CD", status:"OK", title:"10 · Cada cambio pasa por el CI",
-   text:"ci.yml corre ruff, valida rules.yaml y los notebooks, ejecuta los tests contra un PostgreSQL real con 80 % mínimo de cobertura en validación y construye la imagen. deploy.yml publica la imagen por rama: dev → development, staging → staging, main → production.", file:".github/workflows/ci.yml · deploy.yml", code:"ruff check .\npython -m src.validation.check_rules\npytest --cov=src\ncoverage report --include='src/validation/*' --fail-under=80"},
-  {on:[], from:"gold", to:"cfg", type:"Gobernanza", status:"OK", title:"11 · Catálogo y diccionario de datos",
-   text:"python -m src.governance.catalog extrae el esquema real de cada dataset, lo une con las descripciones de negocio y genera catalog/ (YAML) y docs/data_dictionary/ (Markdown).", file:"src/governance/", code:"python -m src.governance.catalog"}
+/* Docker Compose: qué pasa cuando se ejecuta "docker compose up -d --build" */
+const DOCKER_STEPS = [
+  {on:["compose"], frames:{}, from:"compose", to:"compose", type:"docker compose up", status:"OK", title:"1 · Docker Compose lee docker-compose.yml",
+   text:"El comando es docker compose up -d --build (-d = en segundo plano, --build = construir las imágenes propias). Compose lee docker-compose.yml, junta las variables de .env.example (valores por defecto) y de .env (opcional, lo pisa) y arma el plan: 1 imagen para construir, 2 para descargar, 5 contenedores, 2 volúmenes.",
+   docker:"<b>Compose</b> es la herramienta que describe y levanta varios contenedores juntos. Todo lo que ves en el diagrama sale de un solo archivo.", file:"docker-compose.yml · .env.example", code:"docker compose up -d --build"},
+  {on:["img"], frames:{}, from:"compose", to:"img", type:"docker build", status:"OK", title:"2 · Se construye la imagen agro-pipeline",
+   text:"Una imagen es la plantilla (de solo lectura) de la que nacen los contenedores. Docker ejecuta el Dockerfile línea por línea: parte de python:3.11-slim, instala las librerías de requirements.txt, copia config/ y src/, crea un usuario sin privilegios y define el comando por defecto. Cada línea genera una capa que Docker guarda en caché.",
+   docker:"Los tres schedulers usan <b>la misma imagen</b> (<code>agro-pipeline:local</code>) y solo cambian la variable <code>APP_ENV</code>. Un contenedor es una instancia en ejecución de una imagen.", file:"Dockerfile",
+   code:"FROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY config/ config/\nCOPY src/ src/\nUSER pipeline"},
+  {on:[], frames:{}, from:"compose", to:"compose", type:"docker pull", status:"OK", title:"3 · Se descargan las imágenes públicas",
+   text:"Para postgres y grafana no hay nada que construir: Compose descarga postgres:16 y grafana/grafana-oss:11.4.0 desde Docker Hub (solo la primera vez; después quedan en caché local).",
+   docker:"Fijar la versión (<code>11.4.0</code>, <code>16</code>) hace que todos los alumnos tengan exactamente lo mismo: eso es reproducibilidad.", file:"docker-compose.yml", code:"image: postgres:16\nimage: grafana/grafana-oss:11.4.0"},
+  {on:["pgvol"], frames:{}, from:"compose", to:"pgvol", type:"Red y volúmenes", status:"OK", title:"4 · Se crean la red y los volúmenes",
+   text:"Compose crea una red privada (ingsoftwareetl-1_default) donde los contenedores se ven por el nombre de su servicio, y dos volúmenes con nombre: pgdata (datos de PostgreSQL) y grafana-data (configuración de Grafana). Un volumen vive fuera del contenedor: borrar el contenedor no borra los datos.",
+   docker:"Dos tipos de montaje en este proyecto: <b>volumen con nombre</b> (<code>pgdata</code>, lo administra Docker) y <b>bind mount</b> (<code>./storage</code>, una carpeta tuya).", file:"docker-compose.yml", code:"volumes:\n  pgdata:\n  grafana-data:"},
+  {on:["wm","gold"], frames:{postgres:"starting"}, from:"compose", to:"wm", type:"Contenedor postgres", status:"WARNING", title:"5 · Arranca el contenedor postgres",
+   text:"La primera vez que arranca (volumen pgdata vacío), la imagen oficial ejecuta todo lo que haya en /docker-entrypoint-initdb.d. Acá está montada la carpeta ./sql (solo lectura), así que corren 00_entornos.sh (crea agro_dev, agro_staging y agro_prod y aplica el esquema en cada una) y 99_app_users.sh (crea los usuarios pipeline y dashboard).",
+   docker:"Esos scripts corren <b>solo la primera vez</b>. Para aplicar un cambio de esquema en una base ya creada: <code>docker compose exec postgres bash /docker-entrypoint-initdb.d/00_entornos.sh</code> (es idempotente).", file:"sql/00_entornos.sh · sql/99_app_users.sh · sql/schema/01_schema.sql",
+   code:"volumes:\n  - pgdata:/var/lib/postgresql/data\n  - ./sql:/docker-entrypoint-initdb.d:ro"},
+  {on:[], frames:{postgres:"healthy"}, from:"wm", to:"gold", type:"Healthcheck", status:"OK", title:"6 · El healthcheck da el visto bueno",
+   text:"Cada 5 segundos Docker ejecuta pg_isready dentro del contenedor (hasta 10 intentos). Cuando responde, el contenedor pasa de 'starting' a 'healthy'. Los demás servicios esperan ese estado.",
+   docker:"<code>depends_on: postgres: condition: service_healthy</code> evita que los schedulers y Grafana arranquen antes de que la base acepte conexiones: sin eso fallarían al primer intento.", file:"docker-compose.yml",
+   code:"healthcheck:\n  test: [\"CMD-SHELL\", \"pg_isready -U ${POSTGRES_USER}\"]\n  interval: 5s\n  timeout: 5s\n  retries: 10"},
+  {on:["sched","extract","iot","cfg","bronze","dq","silver","quar","goldb"], frames:{scheduler:"running"}, from:"wm", to:"sched", type:"Contenedores scheduler", status:"OK", title:"7 · Arrancan los 3 schedulers (dev, staging, prod)",
+   text:"Con la base healthy arrancan tres contenedores de la misma imagen: scheduler-dev, scheduler-staging y scheduler-prod. Cada uno recibe su APP_ENV y usa su propia base y su propio lake. Ejecutan python -m src.scheduler, que dispara el pipeline cada 15 minutos.",
+   docker:"El diagrama dibuja un solo recuadro, pero en Docker son <b>tres contenedores</b> idénticos salvo por <code>APP_ENV=dev|staging|prod</code>. Comparten la carpeta <code>./storage</code>, y cada entorno escribe en su subcarpeta (<code>storage/dev</code>, <code>storage/staging</code>, <code>storage/prod</code>).", file:"docker-compose.yml",
+   code:"scheduler-dev      APP_ENV=dev      DEV: solo simulador, 20 % de errores\nscheduler-staging  APP_ENV=staging  STAGING: ambas fuentes, 14 %\nscheduler-prod     APP_ENV=prod     PROD: ambas fuentes, 14 %"},
+  {on:["graf","browser"], frames:{grafana:"running"}, from:"gold", to:"graf", type:"Contenedor grafana", status:"OK", title:"8 · Arranca Grafana y se publica el puerto 3000",
+   text:"Grafana arranca con la configuración ya cargada: la carpeta grafana/provisioning crea las fuentes de datos (una por entorno, con el usuario dashboard de solo lectura) y grafana/dashboards trae los 3 dashboards. Se ve en http://localhost:3000.",
+   docker:"Los montajes <code>:ro</code> (read-only) impiden que Grafana modifique los archivos del repo. El acceso anónimo está activado con rol <code>Viewer</code>: se ven los dashboards sin login; para editar se entra con <code>admin</code>.", file:"docker-compose.yml · grafana/",
+   code:"ports:\n  - \"3000:3000\"\nvolumes:\n  - ./grafana/provisioning:/etc/grafana/provisioning:ro\n  - ./grafana/dashboards:/var/lib/grafana/dashboards:ro"},
+  {on:[], frames:{}, from:"sched", to:"extract", type:"Primera corrida", status:"OK", title:"9 · Primera corrida: se llena el lake",
+   text:"Sin watermark, la primera corrida usa una ventana inicial. Aparecen las carpetas storage/<entorno>/bronze, silver y quarantine con sus Parquet, y las filas de Gold en PostgreSQL.",
+   docker:"Para ver lo que escribe un contenedor: <code>docker compose logs -f scheduler-dev</code>.", file:"src/pipeline.py",
+   code:"[PIPELINE] Entorno: STAGING · base agro_staging\n[BRONZE] 763 registros → …/bronze/agro/iot_simulator/…\n[SILVER] 1248 registros\n[QUARANTINE] 91 registros\n[DQ] total=1339 valid=1191 warning=57 invalid=91 score=88.95% utilizable=93.2%\n[DB] Upsert de 48 filas en gold.daily_field_metrics"},
+  {on:[], frames:{}, from:"compose", to:"compose", type:"docker compose ps", status:"OK", title:"10 · Cómo se ve el estado real",
+   text:"docker compose ps lista los contenedores del proyecto y su estado. Esta es la salida real de este proyecto:",
+   docker:"El nombre del contenedor es <code>&lt;proyecto&gt;-&lt;servicio&gt;-&lt;n&gt;</code>. El proyecto toma el nombre de la carpeta.", file:"docker compose ps",
+   code:"NAME                                  STATUS\ningsoftwareetl-1-postgres-1           Up (healthy)\ningsoftwareetl-1-scheduler-dev-1      Up\ningsoftwareetl-1-scheduler-staging-1  Up\ningsoftwareetl-1-scheduler-prod-1     Up\ningsoftwareetl-1-grafana-1            Up"},
+  {on:["img"], frames:{}, from:"img", to:"sched", type:"Cambiar el código", status:"WARNING", title:"11 · Ojo: config/ y src/ viven dentro de la imagen",
+   text:"El Dockerfile copia config/ y src/ al construir la imagen. Si editás rules.yaml, pipeline.yaml o el código, los contenedores en marcha siguen con la versión vieja hasta que reconstruyas.",
+   docker:"Para aplicar el cambio: <code>docker compose up -d --build</code>. Compose reconstruye la imagen y recrea solo los contenedores que cambiaron; los datos (volúmenes y ./storage) se conservan.", file:"Dockerfile · docker-compose.yml",
+   code:"docker compose up -d --build"},
+  {on:[], frames:{}, from:"compose", to:"compose", type:"Parar y limpiar", status:"WARNING", title:"12 · Parar, reiniciar y borrar",
+   text:"docker compose stop apaga los contenedores sin borrarlos. docker compose down los borra pero conserva los volúmenes y ./storage. docker compose down -v también borra los volúmenes con nombre: se pierde la base (pgdata) y la configuración de Grafana.",
+   docker:"<b>Cuidado con <code>-v</code></b>: es lo único que destruye los datos de PostgreSQL. Después de un <code>down -v</code> el próximo <code>up</code> vuelve a ejecutar los scripts de sql/ desde cero.", file:"docker compose",
+   code:"docker compose stop\ndocker compose down          # conserva pgdata\ndocker compose down -v       # BORRA pgdata y grafana-data"}
 ];
 
-if (typeof module !== "undefined") module.exports = {evalRules, classify, goldImpact, buildRun, SETUP, FIELD_IDS};
+/* Proyecto completo: Git, CI/CD y gobierno */
+const PROJECT_STEPS = [
+  {on:["git"], frames:{}, from:"git", to:"git", type:"Código", status:"OK", title:"1 · Se obtiene el código",
+   text:"git clone del repositorio y trabajo en una rama feature/*. main solo se actualiza por Pull Request desde staging, con revisión del equipo.", file:".github/workflows/",
+   code:"git clone https://github.com/SebastianMB1/IngSoftwareETL.git\ngit checkout feature/entornos-etl-paso-a-paso"},
+  {on:["cfg"], frames:{}, from:"git", to:"cfg", type:"Configuración", status:"OK", title:"2 · Configuración versionada",
+   text:"Reglas, campos y parámetros viven en YAML: cambiar un umbral no requiere tocar código. Las contraseñas salen de .env.example (valores de desarrollo) y, si existe, .env las pisa; .env no se sube a Git.",
+   docker:"<code>config/</code> se copia dentro de la imagen al construirla; las variables de entorno se inyectan al contenedor con <code>env_file</code>.", file:"config/ · .env.example",
+   code:"config/pipeline.yaml   fuentes, ventanas, tasa de error\nconfig/rules.yaml      12 reglas y umbrales\nconfig/fields.yaml     8 campos, 20.000 ha, 200 sensores\nconfig/environments/   dev, staging, prod"},
+  {on:["ci"], frames:{}, from:"git", to:"ci", type:"CI", status:"OK", title:"3 · Cada cambio pasa por el CI",
+   text:"ci.yml corre ruff, valida rules.yaml y los notebooks, ejecuta los tests contra un PostgreSQL real (también en un contenedor, como servicio del workflow), exige 80 % de cobertura en validación y construye la imagen.",
+   docker:"El CI también usa Docker: levanta <code>postgres:16</code> como servicio y ejecuta <code>docker build</code> para comprobar que la imagen se construye.", file:".github/workflows/ci.yml",
+   code:"ruff check .\npython -m src.validation.check_rules\npytest --cov=src\ncoverage report --include='src/validation/*' --fail-under=80\ndocker build -t agro-pipeline:<sha> ."},
+  {on:["img"], frames:{}, from:"ci", to:"img", type:"Despliegue", status:"OK", title:"4 · Se publica la imagen por rama",
+   text:"deploy.yml corre en cada push a dev, staging o main: ejecuta el CI, construye la imagen y la publica en GitHub Container Registry con los tags :dev, :staging, :prod y el hash del commit. main → production pide aprobación manual.",
+   docker:"Para usar la imagen publicada en lugar de construirla: <code>PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod</code>.", file:".github/workflows/deploy.yml",
+   code:"dev     → environment development → imagen :dev\nstaging → environment staging     → imagen :staging\nmain    → environment production  → imagen :prod"},
+  {on:[], frames:{}, from:"git", to:"git", type:"Ramas", status:"OK", title:"5 · Flujo de ramas y Pull Requests",
+   text:"feature/* → PR → dev → PR → staging → PR → main. Una rama por entorno. main nunca se toca directo.", file:"docs/decisiones.md (D18)", code:"feature/*  →  dev  →  staging  →  main"},
+  {on:[], frames:{}, from:"gold", to:"cfg", type:"Gobernanza", status:"OK", title:"6 · Catálogo y diccionario de datos",
+   text:"python -m src.governance.catalog extrae el esquema real de cada dataset, lo une con las descripciones de negocio y genera catalog/ (YAML) y docs/data_dictionary/ (Markdown).", file:"src/governance/", code:"python -m src.governance.catalog"},
+  {on:[], frames:{}, from:"dq", to:"dq", type:"Verificación", status:"OK", title:"7 · Verificación final",
+   text:"Antes de entregar se corre todo: ruff, check_rules, pytest con cobertura y una corrida en dev. En la última verificación: 92 tests pasados y 92 % de cobertura en src/validation (mínimo 80 %).", file:"docs/revision/paso-6.md",
+   code:"ruff check .                 → All checks passed!\npytest --cov=src             → 92 passed\ncoverage report (validation) → 92 %"}
+];
+
+if (typeof module !== "undefined") module.exports = {evalRules, classify, goldImpact, buildRun, DOCKER_STEPS, PROJECT_STEPS, FIELD_IDS};
 </script>
 
 <script id="app">
@@ -358,48 +447,150 @@ const PDUS = [
   {id:"meteo", name:"Open-Meteo (horario)", color:"var(--info)", rec:{field_id:"LIT-07", timestamp:"2026-10-14T13:00:00Z", temperature:21.1, temperature_unit:"°C", humidity:55, soil_moisture:0.27, precipitation:0, wind_speed:15, source:"open_meteo"}}
 ];
 
-/* Dispositivos de la topología */
+/* ct = contenedor Docker donde vive el dispositivo */
 const DEVICES = {
-  sched:{x:350,y:80,type:"clock",label:"Scheduler",sub:"cada 900 s"},
-  cfg:{x:110,y:600,type:"file",label:"Configuración",sub:"YAML + .env.example"},
-  meteo:{x:110,y:210,type:"cloud",label:"Open-Meteo API",sub:"datos reales · horarios"},
-  iot:{x:110,y:380,type:"sensor",label:"Sensores IoT",sub:"8 campos · 200 sensores"},
-  extract:{x:350,y:290,type:"router",label:"Extracción",sub:"run_bronze · incremental"},
-  state:{x:350,y:480,type:"db",label:"etl.watermarks",sub:"hasta dónde se leyó"},
-  bronze:{x:580,y:290,type:"storage",label:"Bronze",sub:"Parquet · inmutable",color:"#b9772f"},
-  dq:{x:810,y:290,type:"firewall",label:"Motor de calidad",sub:"12 reglas DQ01–DQ12"},
-  silver:{x:1030,y:160,type:"storage",label:"Silver",sub:"VALID + WARNING",color:"#8a98a8"},
-  quar:{x:1030,y:420,type:"storage",label:"Quarantine",sub:"rechazados + motivo",color:"#d64545"},
-  gold:{x:1250,y:290,type:"server",label:"Gold · PostgreSQL",sub:"indicadores y score",color:"#d4a017"},
-  graf:{x:1250,y:560,type:"monitor",label:"Grafana",sub:"localhost:3000"},
-  git:{x:580,y:600,type:"git",label:"GitHub",sub:"código · ramas · PR"},
-  ci:{x:810,y:600,type:"ci",label:"CI/CD",sub:"Actions · ruff · pytest"},
-  pg:{x:580,y:480,type:"server",label:"PostgreSQL 16",sub:"3 bases: dev/staging/prod",color:"#336791"}
+  meteo:{x:100,y:280,type:"cloud",label:"Open-Meteo API",sub:"Internet · datos reales"},
+  img:{x:100,y:445,type:"image",label:"Imagen Docker",sub:"agro-pipeline:local"},
+  ci:{x:100,y:605,type:"ci",label:"CI/CD",sub:"GitHub Actions"},
+  git:{x:100,y:765,type:"git",label:"GitHub",sub:"código · ramas · PR"},
+  compose:{x:1345,y:150,type:"yml",label:"docker-compose.yml",sub:"orquesta todo"},
+  browser:{x:1345,y:375,type:"browser",label:"Navegador",sub:"localhost:3000"},
+  sched:{x:500,y:150,type:"clock",label:"Scheduler",sub:"cada 900 s",ct:"scheduler"},
+  extract:{x:500,y:280,type:"router",label:"Extracción",sub:"run_bronze · incremental",ct:"scheduler"},
+  iot:{x:300,y:415,type:"sensor",label:"Simulador IoT",sub:"8 campos · 200 sensores",ct:"scheduler"},
+  cfg:{x:700,y:415,type:"file",label:"config/",sub:"dentro de la imagen",ct:"scheduler"},
+  bronze:{x:700,y:280,type:"storage",label:"Bronze",sub:"Parquet · inmutable",color:"#b9772f",ct:"scheduler",tag:"bind mount ./storage"},
+  dq:{x:900,y:280,type:"firewall",label:"Motor de calidad",sub:"12 reglas DQ01–DQ12",ct:"scheduler"},
+  silver:{x:1100,y:205,type:"storage",label:"Silver",sub:"VALID + WARNING",color:"#8a98a8",ct:"scheduler",tag:"bind mount ./storage"},
+  quar:{x:1100,y:385,type:"storage",label:"Quarantine",sub:"rechazados + motivo",color:"#d64545",ct:"scheduler",tag:"bind mount ./storage"},
+  goldb:{x:900,y:415,type:"router",label:"Transformación Gold",sub:"run_gold · upsert",ct:"scheduler"},
+  wm:{x:500,y:695,type:"db",label:"etl.watermarks",sub:"hasta dónde se leyó",ct:"postgres"},
+  pgvol:{x:700,y:695,type:"volume",label:"Volumen pgdata",sub:"datos persistentes",ct:"postgres"},
+  gold:{x:900,y:695,type:"server",label:"Gold · PostgreSQL",sub:"indicadores y score",color:"#d4a017",ct:"postgres"},
+  graf:{x:1345,y:695,type:"monitor",label:"Grafana",sub:"3 dashboards",ct:"grafana",tag:"puerto 3000"}
 };
+const FRAMES = [
+  {key:"host", x:195, y:12, w:1295, h:885, title:"PC del docente · Docker Desktop", sub:"", cls:"host"},
+  {key:"out", x:12, y:195, w:170, h:640, title:"", sub:"", cls:"out"},
+  {key:"scheduler", x:225, y:40, w:970, h:463, title:"Contenedor scheduler-dev · -staging · -prod", sub:"imagen agro-pipeline:local", cls:"c"},
+  {key:"postgres", x:410, y:545, w:600, h:335, title:"Contenedor postgres", sub:"imagen postgres:16 · puerto 5432", cls:"c"},
+  {key:"grafana", x:1215, y:545, w:265, h:335, title:"Contenedor grafana", sub:"imagen grafana-oss:11.4.0", cls:"c"}
+];
 const LINKS = [
-  ["sched","extract",true],["meteo","extract"],["iot","extract"],["extract","state"],["extract","bronze"],["bronze","dq"],
-  ["dq","silver"],["dq","quar"],["silver","gold"],["quar","gold"],["gold","graf"],["cfg","extract",true],["cfg","dq",true],
-  ["git","ci",true],["ci","dq",true],["pg","state",true],["pg","gold",true],["cfg","git",true]
+  {a:"sched",b:"extract"}, {a:"meteo",b:"extract",label:"HTTPS · Internet", lp:[300,270]}, {a:"iot",b:"extract"},
+  {a:"cfg",b:"extract",ctl:true}, {a:"cfg",b:"dq",ctl:true}, {a:"extract",b:"bronze"},
+  {a:"bronze",b:"dq"}, {a:"dq",b:"silver"}, {a:"dq",b:"quar"}, {a:"silver",b:"goldb"}, {a:"quar",b:"goldb"},
+  {a:"extract",b:"wm",label:"red interna · postgres:5432", lp:[500,520]},
+  {a:"goldb",b:"gold",label:"red interna · postgres:5432", lp:[900,525]},
+  {a:"pgvol",b:"gold",ctl:true}, {a:"gold",b:"graf",label:"postgres:5432 · solo lectura", lp:[1120,685]},
+  {a:"graf",b:"browser",label:"puerto 3000", lp:[1345,535]},
+  {a:"img",b:"sched",ctl:true,label:"docker build", lp:[230,345]}, {a:"ci",b:"img",ctl:true}, {a:"git",b:"ci",ctl:true},
+  {a:"compose",b:"sched",ctl:true}
 ];
 
-/* Contenido de las ventanas de cada dispositivo */
-const INFO = {
-  sched:{t:"Scheduler",resumen:"Dispara el pipeline cada <b>PIPELINE_INTERVAL_SECONDS</b> (900 s = 15 min, la frecuencia de los sensores). Hay uno por entorno. Una corrida fallida se registra y no frena las siguientes.",files:["src/scheduler.py","src/main.py (modo manual)"],cli:"[SCHEDULER] Entorno DEV · corrida cada 900s.\n[SCHEDULER] 2026-10-19 15:00:00 UTC - inicio de corrida",code:"python -m src.scheduler     # bucle cada 900 s\npython -m src.main          # una corrida a mano"},
-  cfg:{t:"Configuración",resumen:"Todo lo que se puede cambiar sin tocar código: <b>rules.yaml</b> (umbrales de las 12 reglas), <b>fields.yaml</b> (8 campos, 20.000 ha, 200 sensores), <b>pipeline.yaml</b> (fuentes, ventanas, tasa de error 14 %) y <b>environments/</b> (lo que cambia en dev, staging y prod). Las contraseñas vienen de <b>.env.example</b> y, si existe, <b>.env</b> las pisa.",files:["config/pipeline.yaml","config/rules.yaml","config/fields.yaml","config/environments/*.yaml",".env.example"],cli:"[RULES] OK: 12 reglas y 8 campos válidos.",code:"python -m src.validation.check_rules   # lo corre el CI"},
-  meteo:{t:"Open-Meteo API",resumen:"Datos meteorológicos <b>reales</b>, horarios, para las coordenadas de cada campo. Publica con unos 5 días de retraso (<code>lag_days: 5</code>). Reintenta 3 veces con espera creciente. Está desactivada en DEV para no depender de internet.",files:["src/ingestion/open_meteo.py"],cli:"[BRONZE] 576 registros -> …/bronze/agro/open_meteo/year=2026/month=10/batch_9b1c8b81….parquet\n[STATE] Watermark agro.open_meteo = 2026-10-09T23:00:00+00:00",code:"base_url: https://archive-api.open-meteo.com/v1/archive\nretries: 3"},
-  iot:{t:"Sensores IoT (simulador)",resumen:"Cada sensor reporta cada 15 minutos (96 lecturas por día). La cliente tiene 200 sensores en 8 campos = 19.200 registros por día. El simulador de la POC genera <b>una lectura por campo</b> (768 por día) e inyecta 13 tipos de error a propósito para medir si las reglas los detectan.",files:["src/ingestion/iot_simulator.py","src/ingestion/schema.py"],cli:"[BRONZE] 763 registros -> …/bronze/agro/iot_simulator/…\n[STATE] Watermark agro.iot_simulator = 2026-10-14T01:00:00+00:00",code:"error_rate: 0.14   # 0.20 en dev\n# tipos: null_timestamp, bad_timestamp, future_timestamp,\n# unknown_field, duplicate, wrong_unit, humidity_out_of_range,\n# negative_precipitation, temperature_extreme, soil_out_of_range,\n# gap, spike, null_field"},
-  extract:{t:"Extracción (run_bronze)",resumen:"Pide la ventana nueva de cada fuente, unifica las columnas, agrega el <b>linaje</b> (<code>_batch_id</code>, <code>_ingested_at</code>, <code>_source_system</code>) y escribe Bronze. Recién después avanza el watermark.",files:["src/pipeline.py","src/common/lake.py","src/common/state.py"],cli:"[BRONZE] 8 registros -> /app/storage/dev/bronze/agro/iot_simulator/…\n[STATE] Watermark agro.iot_simulator = 2026-10-19T15:00:00+00:00",code:"batch_id = lake.new_batch_id()   # UUID del lote\ndf = lake.enrich_with_lineage(df, source, batch_id)\nlake.write_parquet(df, ..., 'bronze', ...)"},
-  state:{t:"etl.watermarks",resumen:"Tabla de PostgreSQL con el <b>fin de la última ventana</b> leída de cada fuente. Se guarda el fin de la ventana (no el máximo timestamp de los datos), así un registro con fecha futura no la corrompe y los rechazados no se piden de nuevo.",files:["src/common/state.py","sql/schema/01_schema.sql"],cli:"agro_dev=# SELECT * FROM etl.watermarks;\n domain |    entity     |       watermark        \n agro   | iot_simulator | 2026-10-19 15:00:00+00",code:"ventana siguiente = (watermark, fin]"},
-  bronze:{t:"Bronze (lake Parquet)",resumen:"Los datos <b>exactamente como llegaron</b>, más el linaje. Es <b>inmutable</b>: nunca se reescribe un lote, así siempre se puede reprocesar Silver y Gold sin volver a llamar a la fuente.",files:["storage/<entorno>/bronze/agro/<fuente>/year=AAAA/month=MM/batch_<lote>.parquet"],cli:"python -m src.main --reprocess <batch_id>   # regenera Silver y Gold desde Bronze",code:"FileExistsError si el lote ya existe"},
-  dq:{t:"Motor de calidad (12 reglas)",resumen:"Evalúa DQ01–DQ12 en tres tandas: <b>identificación</b> (DQ01–05), <b>valores</b> (DQ06–10) y <b>secuencia</b> (DQ11–12). Cada hallazgo es REJECT o WARNING. <b>Un rechazo en una sola variable invalida el registro completo.</b> Los umbrales están en rules.yaml.",files:["src/validation/engine.py","src/validation/check_rules.py","config/rules.yaml"],cli:"[DQ] total=1339 valid=1191 warning=57 invalid=91 score=88.95% utilizable=93.2% errores=336",code:"dq_score       = VALID / total × 100\npct_utilizable = (VALID + WARNING) / total × 100"},
-  silver:{t:"Silver",resumen:"Registros <b>VALID</b> y <b>WARNING</b>, ya tipados (timestamp en UTC), con <code>dq_status</code> y los avisos en <code>_dq_warnings</code>. Se puede regenerar desde Bronze.",files:["storage/<entorno>/silver/agro/measurements/…/clean_<lote>.parquet"],cli:"[SILVER] 1248 registros -> …/silver/agro/measurements/…/clean_9b1c8b81….parquet",code:"dq_status ∈ {VALID, WARNING}"},
-  quar:{t:"Quarantine",resumen:"Los registros <b>rechazados</b>, sin modificar, con <code>_rejection_reasons</code> (por ejemplo <code>DQ07</code>) y <code>_rejected_at</code>. El 100 % de los rechazos queda acá con su motivo: nada se descarta en silencio.",files:["storage/<entorno>/quarantine/agro/measurements/…/rejected_<lote>.parquet"],cli:"[QUARANTINE] 91 registros -> …/quarantine/agro/measurements/…/rejected_9b1c8b81….parquet",code:"_rejection_reasons = 'DQ07'"},
-  gold:{t:"Gold · PostgreSQL",resumen:"Lo único que consume el dashboard. <b>gold.daily_field_metrics</b> (indicadores por fecha, campo y fuente, con upsert), <b>gold.dq_run_metrics</b> (score estricto y % utilizable por corrida), <b>gold.dq_errors</b> (cada hallazgo) y las tablas de trazabilidad. Nunca contiene registros inválidos.",files:["src/transformation/gold.py","src/metrics/quality.py","sql/schema/01_schema.sql"],cli:"[DB] Upsert de 8 filas en gold.fields.\n[DB] Upsert de 48 filas en gold.daily_field_metrics.\n[PIPELINE] Lote 9b1c8b81-… procesado.\n[PIPELINE] Duración: 29.8s (objetivo RNF08: < 300s)",code:"clave: (fecha, field_id, fuente)\nporcentaje_calidad = VALID / (publicados + rechazados) × 100"},
-  graf:{t:"Grafana",resumen:"Tres dashboards provisionados desde el repo: <b>calidad-datos</b>, <b>flujo-etl</b> y <b>etl-paso-a-paso</b> (sigue un registro real por las 5 etapas). Un selector de entorno cambia entre DEV, STAGING y PROD. Lee con el usuario <code>dashboard</code>, de solo lectura.",files:["grafana/dashboards/*.json","grafana/provisioning/"],cli:"http://localhost:3000",code:"Última corrida: DQ Score estricto · % utilizable · VALID · WARNING · INVALID"},
-  git:{t:"GitHub",resumen:"Código, ramas y Pull Requests. Flujo: <b>feature/*</b> → <b>dev</b> → <b>staging</b> → <b>main</b>. <b>main</b> solo se actualiza por PR desde staging, con revisión del equipo.",files:[".github/workflows/ci.yml",".github/workflows/deploy.yml"],cli:"git log --oneline",code:"dev → development\nstaging → staging\nmain → production"},
-  ci:{t:"CI/CD (GitHub Actions)",resumen:"En cada cambio: Ruff, validación de rules.yaml y notebooks, tests con Pytest contra PostgreSQL real, cobertura mínima de 80 % en <code>src/validation</code> y build de la imagen Docker. Al subir a dev, staging o main publica la imagen en GitHub Container Registry.",files:[".github/workflows/ci.yml",".github/workflows/deploy.yml"],cli:"ruff check .                       → All checks passed!\npytest --cov=src                   → 92 passed\ncoverage report (validation)       → 92 %",code:"coverage report --include='src/validation/*' --fail-under=80"},
-  pg:{t:"PostgreSQL 16",resumen:"Un solo servidor con <b>tres bases</b> aisladas: agro_dev, agro_staging y agro_prod. Se crean con 00_entornos.sh, que aplica el esquema y es idempotente. Usuarios de mínimo privilegio: <code>pipeline</code> (escribe) y <code>dashboard</code> (solo lectura).",files:["docker-compose.yml","sql/00_entornos.sh","sql/99_app_users.sh","sql/schema/01_schema.sql"],cli:"[INIT] Base agro_dev lista.\n[INIT] Base agro_staging lista.\n[INIT] Base agro_prod lista.\n[INIT] Permisos aplicados en agro_dev.",code:"docker compose up -d --build"}
+/* Contenedores Docker: ficha técnica real, tomada de docker-compose.yml */
+const CONTAINERS = {
+  scheduler:{t:"Contenedor scheduler-dev / scheduler-staging / scheduler-prod",
+    resumen:"Tres contenedores nacidos de la <b>misma imagen</b> (<code>agro-pipeline:local</code>). Cada uno ejecuta el pipeline cada 15 minutos para su entorno. Dentro corren, como procesos Python: el scheduler, la extracción, el simulador IoT, el motor de calidad y la transformación a Gold.",
+    ficha:[["Imagen","agro-pipeline:local (se construye con build: . desde el Dockerfile)"],["Comando","python -m src.scheduler"],["Puertos","ninguno publicado"],
+      ["Volúmenes","./storage → /app/storage (bind mount: el lake Parquet queda en tu disco)"],["Variables","env_file (.env.example y .env opcional) + APP_ENV, POSTGRES_HOST=postgres, POSTGRES_PORT=5432"],
+      ["Depende de","postgres, con condition: service_healthy"],["Reinicio","unless-stopped"],["Usuario","pipeline (uid 1000, sin privilegios)"]],
+    yaml:"scheduler-dev:\n  <<: *scheduler          # hereda la plantilla\n  image: ${DEV_IMAGE:-agro-pipeline:local}\n  environment: {APP_ENV: dev, POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}\n\n# plantilla x-scheduler:\nbuild: .\ncommand: [\"python\", \"-m\", \"src.scheduler\"]\nenv_file: *env_file\nvolumes:\n  - ./storage:/app/storage\ndepends_on:\n  postgres:\n    condition: service_healthy\nrestart: unless-stopped",
+    cli:"docker compose logs -f scheduler-dev\ndocker compose restart scheduler-dev\ndocker compose exec scheduler-dev sh\ndocker compose run --rm -e APP_ENV=dev pipeline    # corrida manual"},
+  postgres:{t:"Contenedor postgres",
+    resumen:"Un solo servidor PostgreSQL 16 con <b>tres bases</b> aisladas (agro_dev, agro_staging, agro_prod). Guarda Gold, los watermarks y las métricas de calidad. Los datos viven en el volumen <code>pgdata</code>.",
+    ficha:[["Imagen","postgres:16 (Docker Hub)"],["Puertos","5432:5432 (también accesible desde tu PC, por ejemplo con psql)"],
+      ["Volúmenes","pgdata → /var/lib/postgresql/data (volumen con nombre)  ·  ./sql → /docker-entrypoint-initdb.d (solo lectura)"],
+      ["Healthcheck","pg_isready cada 5 s, 5 s de timeout, hasta 10 reintentos"],["Variables","POSTGRES_USER, POSTGRES_PASSWORD, usuarios pipeline y dashboard (desde .env.example / .env)"],["Reinicio","unless-stopped"]],
+    yaml:"postgres:\n  image: postgres:16\n  env_file: *env_file\n  ports:\n    - \"${POSTGRES_PORT:-5432}:5432\"\n  volumes:\n    - pgdata:/var/lib/postgresql/data\n    - ./sql:/docker-entrypoint-initdb.d:ro\n  healthcheck:\n    test: [\"CMD-SHELL\", \"pg_isready -U $${POSTGRES_USER}\"]\n    interval: 5s\n    timeout: 5s\n    retries: 10\n  restart: unless-stopped",
+    cli:"docker compose exec postgres psql -U $POSTGRES_USER -d agro_dev\ndocker compose exec postgres bash /docker-entrypoint-initdb.d/00_entornos.sh   # migrar esquema\ndocker compose logs postgres"},
+  grafana:{t:"Contenedor grafana",
+    resumen:"Muestra los tres dashboards. Lee <b>solo</b> las tablas gold.* con el usuario <code>dashboard</code>, de solo lectura. La fuente de datos y los dashboards se cargan solos al arrancar (provisioning).",
+    ficha:[["Imagen","grafana/grafana-oss:11.4.0 (Docker Hub)"],["Puertos","3000:3000 → http://localhost:3000"],
+      ["Volúmenes","grafana-data → /var/lib/grafana  ·  ./grafana/provisioning → /etc/grafana/provisioning (:ro)  ·  ./grafana/dashboards → /var/lib/grafana/dashboards (:ro)"],
+      ["Variables","GF_SECURITY_ADMIN_USER=admin, GF_AUTH_ANONYMOUS_ENABLED=true (rol Viewer), tema oscuro, idioma es-ES"],["Depende de","postgres (service_healthy)"],["Reinicio","unless-stopped"]],
+    yaml:"grafana:\n  image: grafana/grafana-oss:11.4.0\n  environment:\n    GF_SECURITY_ADMIN_USER: admin\n    GF_AUTH_ANONYMOUS_ENABLED: \"true\"\n    GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer\n  ports:\n    - \"${GRAFANA_PORT:-3000}:3000\"\n  volumes:\n    - grafana-data:/var/lib/grafana\n    - ./grafana/provisioning:/etc/grafana/provisioning:ro\n    - ./grafana/dashboards:/var/lib/grafana/dashboards:ro\n  depends_on:\n    postgres:\n      condition: service_healthy",
+    cli:"docker compose logs grafana\ndocker compose restart grafana\n# http://localhost:3000   (admin / GRAFANA_ADMIN_PASSWORD para editar)"}
 };
+
+const INFO = {
+  meteo:{t:"Open-Meteo API (Internet)",resumen:"Datos meteorológicos <b>reales</b>, horarios, para las coordenadas de cada campo. Publica con unos 5 días de retraso (<code>lag_days: 5</code>). Reintenta 3 veces con espera creciente. Está desactivada en DEV para no depender de internet.",files:["src/ingestion/open_meteo.py"],cli:"[BRONZE] 576 registros -> …/bronze/agro/open_meteo/year=2026/month=10/batch_….parquet\n[STATE] Watermark agro.open_meteo = 2026-10-09T23:00:00+00:00",code:"base_url: https://archive-api.open-meteo.com/v1/archive\nretries: 3"},
+  img:{t:"Imagen Docker agro-pipeline",resumen:"La plantilla de solo lectura con Python 3.11, las librerías, <code>config/</code> y <code>src/</code>. Se construye con el Dockerfile. De ella nacen los contenedores scheduler y el contenedor manual <code>pipeline</code>. <b>Importante:</b> el código y la configuración quedan dentro de la imagen; para cambiarlos hay que reconstruirla.",files:["Dockerfile","requirements.txt"],cli:"docker compose build\ndocker image ls agro-pipeline",code:"FROM python:3.11-slim\n…\nCOPY config/ config/\nCOPY src/ src/\nUSER pipeline\nCMD [\"python\", \"-m\", \"src.main\"]"},
+  ci:{t:"CI/CD (GitHub Actions)",resumen:"En cada cambio: Ruff, validación de rules.yaml y notebooks, tests con Pytest contra PostgreSQL real, cobertura mínima de 80 % en <code>src/validation</code> y build de la imagen Docker. Al subir a dev, staging o main publica la imagen en GitHub Container Registry.",files:[".github/workflows/ci.yml",".github/workflows/deploy.yml"],cli:"ruff check .                  → All checks passed!\npytest --cov=src              → 92 passed\ncoverage report (validation)  → 92 %",code:"coverage report --include='src/validation/*' --fail-under=80"},
+  git:{t:"GitHub",resumen:"Código, ramas y Pull Requests. Flujo: <b>feature/*</b> → <b>dev</b> → <b>staging</b> → <b>main</b>. <b>main</b> solo se actualiza por PR desde staging, con revisión del equipo.",files:[".github/workflows/ci.yml",".github/workflows/deploy.yml"],cli:"git log --oneline",code:"dev → development\nstaging → staging\nmain → production"},
+  compose:{t:"docker-compose.yml",resumen:"El archivo que describe <b>toda</b> la infraestructura local: qué contenedores, con qué imagen, qué puertos, volúmenes y variables, y en qué orden arrancan. Con un solo comando se levanta o se apaga todo. Usá el botón <b>docker-compose.yml explicado</b> para verlo línea por línea.",files:["docker-compose.yml","Dockerfile",".env.example"],cli:"docker compose up -d --build\ndocker compose ps\ndocker compose down",code:"services: postgres, scheduler-dev, scheduler-staging, scheduler-prod, grafana, pipeline (perfil run)\nvolumes: pgdata, grafana-data"},
+  browser:{t:"Navegador del host",resumen:"Tu navegador entra a <code>http://localhost:3000</code>. Funciona porque el contenedor grafana <b>publica</b> su puerto 3000 en tu PC (<code>ports: \"3000:3000\"</code>).",files:["docker-compose.yml (servicio grafana, ports)"],cli:"http://localhost:3000",code:"ports:\n  - \"3000:3000\"   # host:contenedor"},
+  sched:{t:"Scheduler",resumen:"Dispara el pipeline cada <b>PIPELINE_INTERVAL_SECONDS</b> (900 s = 15 min, la frecuencia de los sensores). Es el proceso principal del contenedor. Una corrida fallida se registra y no frena las siguientes.",files:["src/scheduler.py","src/main.py (modo manual)"],cli:"[SCHEDULER] Entorno DEV · corrida cada 900s.\n[SCHEDULER] 2026-10-19 15:00:00 UTC - inicio de corrida",code:"python -m src.scheduler     # bucle cada 900 s\npython -m src.main          # una corrida a mano"},
+  extract:{t:"Extracción (run_bronze)",resumen:"Pide la ventana nueva de cada fuente, unifica las columnas, agrega el <b>linaje</b> (<code>_batch_id</code>, <code>_ingested_at</code>, <code>_source_system</code>) y escribe Bronze. Recién después avanza el watermark.",files:["src/pipeline.py","src/common/lake.py","src/common/state.py"],cli:"[BRONZE] 8 registros -> /app/storage/dev/bronze/agro/iot_simulator/…\n[STATE] Watermark agro.iot_simulator = 2026-10-19T15:00:00+00:00",code:"batch_id = lake.new_batch_id()   # UUID del lote\ndf = lake.enrich_with_lineage(df, source, batch_id)\nlake.write_parquet(df, ..., 'bronze', ...)"},
+  iot:{t:"Simulador IoT",resumen:"Cada sensor reporta cada 15 minutos (96 lecturas por día). El cliente tiene 200 sensores en 8 campos = 19.200 registros por día. El simulador de la POC genera <b>una lectura por campo</b> (768 por día) e inyecta 13 tipos de error a propósito para medir si las reglas los detectan. Es código dentro de la imagen, no un contenedor aparte.",files:["src/ingestion/iot_simulator.py","src/ingestion/schema.py"],cli:"[BRONZE] 763 registros -> …/bronze/agro/iot_simulator/…",code:"error_rate: 0.14   # 0.20 en dev\n# tipos: null_timestamp, bad_timestamp, future_timestamp,\n# unknown_field, duplicate, wrong_unit, humidity_out_of_range,\n# negative_precipitation, temperature_extreme, soil_out_of_range,\n# gap, spike, null_field"},
+  cfg:{t:"Configuración (config/)",resumen:"Reglas, campos y parámetros en YAML: <b>rules.yaml</b> (umbrales), <b>fields.yaml</b> (8 campos, 20.000 ha, 200 sensores), <b>pipeline.yaml</b> (fuentes, ventanas, 14 % de error) y <b>environments/</b>. Se copia <b>dentro de la imagen</b> al construirla. Las contraseñas llegan como variables de entorno desde <b>.env.example</b> y, si existe, <b>.env</b>.",files:["config/pipeline.yaml","config/rules.yaml","config/fields.yaml","config/environments/*.yaml",".env.example"],cli:"[RULES] OK: 12 reglas y 8 campos válidos.",code:"python -m src.validation.check_rules   # lo corre el CI"},
+  bronze:{t:"Bronze (lake Parquet)",resumen:"Los datos <b>exactamente como llegaron</b>, más el linaje. Es <b>inmutable</b>: nunca se reescribe un lote, así siempre se puede reprocesar Silver y Gold sin volver a llamar a la fuente. Se guarda en <code>/app/storage</code> del contenedor, que es la carpeta <code>./storage</code> de tu PC (bind mount).",files:["./storage/<entorno>/bronze/agro/<fuente>/year=AAAA/month=MM/batch_<lote>.parquet"],cli:"python -m src.main --reprocess <batch_id>   # regenera Silver y Gold desde Bronze",code:"FileExistsError si el lote ya existe"},
+  dq:{t:"Motor de calidad (12 reglas)",resumen:"Evalúa DQ01–DQ12 en tres tandas: <b>identificación</b> (DQ01–05), <b>valores</b> (DQ06–10) y <b>secuencia</b> (DQ11–12). Cada hallazgo es REJECT o WARNING. <b>Un rechazo en una sola variable invalida el registro completo.</b> Los umbrales están en rules.yaml.",files:["src/validation/engine.py","src/validation/check_rules.py","config/rules.yaml"],cli:"[DQ] total=1339 valid=1191 warning=57 invalid=91 score=88.95% utilizable=93.2% errores=336",code:"dq_score       = VALID / total × 100\npct_utilizable = (VALID + WARNING) / total × 100"},
+  silver:{t:"Silver",resumen:"Registros <b>VALID</b> y <b>WARNING</b>, ya tipados (timestamp en UTC), con <code>dq_status</code> y los avisos en <code>_dq_warnings</code>. Se puede regenerar desde Bronze. Vive en <code>./storage</code> (bind mount).",files:["./storage/<entorno>/silver/agro/measurements/…/clean_<lote>.parquet"],cli:"[SILVER] 1248 registros -> …/silver/agro/measurements/…/clean_….parquet",code:"dq_status ∈ {VALID, WARNING}"},
+  quar:{t:"Quarantine",resumen:"Los registros <b>rechazados</b>, sin modificar, con <code>_rejection_reasons</code> (por ejemplo <code>DQ07</code>) y <code>_rejected_at</code>. El 100 % de los rechazos queda acá con su motivo: nada se descarta en silencio.",files:["./storage/<entorno>/quarantine/agro/measurements/…/rejected_<lote>.parquet"],cli:"[QUARANTINE] 91 registros -> …/quarantine/agro/measurements/…/rejected_….parquet",code:"_rejection_reasons = 'DQ07'"},
+  goldb:{t:"Transformación Gold (run_gold)",resumen:"Lee Silver y Quarantine del lake, recalcula los indicadores de cada día, campo y fuente tocados con <b>todo</b> Silver y los carga a PostgreSQL con upsert. También guarda el resumen de la corrida (score estricto y % utilizable).",files:["src/transformation/gold.py","src/metrics/quality.py","src/common/db.py"],cli:"[DB] Upsert de 8 filas en gold.fields.\n[DB] Upsert de 48 filas en gold.daily_field_metrics.\n[PIPELINE] Duración: 29.8s (objetivo RNF08: < 300s)",code:"porcentaje_calidad = VALID / (publicados + rechazados) × 100"},
+  wm:{t:"etl.watermarks",resumen:"Tabla de PostgreSQL con el <b>fin de la última ventana</b> leída de cada fuente. Se guarda el fin de la ventana (no el máximo timestamp de los datos), así un registro con fecha futura no la corrompe y los rechazados no se piden de nuevo.",files:["src/common/state.py","sql/schema/01_schema.sql"],cli:"agro_dev=# SELECT * FROM etl.watermarks;\n domain |    entity     |       watermark\n agro   | iot_simulator | 2026-10-19 15:00:00+00",code:"ventana siguiente = (watermark, fin]"},
+  pgvol:{t:"Volumen pgdata",resumen:"Un <b>volumen Docker con nombre</b>. Es donde PostgreSQL guarda sus archivos (<code>/var/lib/postgresql/data</code>). Vive fuera del contenedor: se puede borrar y recrear el contenedor sin perder la base. Solo <code>docker compose down -v</code> lo elimina.",files:["docker-compose.yml (volumes: pgdata)"],cli:"docker volume ls\ndocker compose down        # conserva pgdata\ndocker compose down -v     # BORRA pgdata",code:"volumes:\n  pgdata:\n  grafana-data:"},
+  gold:{t:"Gold · PostgreSQL",resumen:"Lo único que consume el dashboard. <b>gold.daily_field_metrics</b> (indicadores por fecha, campo y fuente), <b>gold.dq_run_metrics</b> (score estricto y % utilizable por corrida), <b>gold.dq_errors</b> (cada hallazgo) y las tablas de trazabilidad. Nunca contiene registros inválidos. Usuarios: <code>pipeline</code> (escribe) y <code>dashboard</code> (solo lectura).",files:["src/transformation/gold.py","sql/schema/01_schema.sql","sql/99_app_users.sh"],cli:"[INIT] Base agro_dev lista.\n[INIT] Base agro_staging lista.\n[INIT] Base agro_prod lista.\n[INIT] Permisos aplicados en agro_dev.",code:"clave: (fecha, field_id, fuente)\nporcentaje_calidad = VALID / (publicados + rechazados) × 100"},
+  graf:{t:"Grafana",resumen:"Tres dashboards provisionados desde el repo: <b>calidad-datos</b>, <b>flujo-etl</b> y <b>etl-paso-a-paso</b> (sigue un registro real por las 5 etapas). Un selector de entorno cambia entre DEV, STAGING y PROD. Lee con el usuario <code>dashboard</code>, de solo lectura.",files:["grafana/dashboards/*.json","grafana/provisioning/"],cli:"http://localhost:3000",code:"Última corrida: DQ Score estricto · % utilizable · VALID · WARNING · INVALID"}
+};
+
+/* docker-compose.yml y Dockerfile explicados línea por línea (contenido real del repositorio) */
+const YML_ANN = [
+  ["§","Variables de entorno"],
+  ["x-env-file: &env_file\n  - path: .env.example\n  - path: .env\n    required: false","Define una lista reutilizable (&env_file) con dos archivos de variables. .env.example trae valores por defecto de desarrollo; .env es opcional (required: false) y, si existe, pisa a los anteriores. Así el proyecto levanta sin crear ningún archivo."],
+  ["§","Plantilla de los schedulers"],
+  ["x-scheduler: &scheduler\n  build: .\n  command: [\"python\", \"-m\", \"src.scheduler\"]","Bloque reutilizable. build: . construye la imagen desde el Dockerfile de esta carpeta. command reemplaza el CMD del Dockerfile: en lugar de una corrida única, arranca el bucle del scheduler."],
+  ["  env_file: *env_file\n  volumes:\n    - ./storage:/app/storage","Inyecta las variables y monta la carpeta ./storage de tu PC en /app/storage del contenedor (bind mount). Todo lo que el pipeline escriba ahí queda en tu disco."],
+  ["  depends_on:\n    postgres:\n      condition: service_healthy\n  restart: unless-stopped","No arranca hasta que postgres esté healthy, y si el contenedor se cae Docker lo reinicia (salvo que lo pares vos)."],
+  ["§","Servicio postgres"],
+  ["services:\n  postgres:\n    image: postgres:16\n    env_file: *env_file","Usa la imagen oficial de PostgreSQL 16. Las variables POSTGRES_USER y POSTGRES_PASSWORD las lee la propia imagen para crear el superusuario."],
+  ["    ports:\n      - \"${POSTGRES_PORT:-5432}:5432\"","Publica el puerto 5432 en tu PC (formato host:contenedor). \"${POSTGRES_PORT:-5432}\" significa: usar la variable, y si no existe, 5432."],
+  ["    volumes:\n      - pgdata:/var/lib/postgresql/data\n      - ./sql:/docker-entrypoint-initdb.d:ro","pgdata es un volumen con nombre: los datos sobreviven al contenedor. ./sql se monta en solo lectura (:ro) en la carpeta que la imagen ejecuta la primera vez que arranca: crea las 3 bases y los usuarios."],
+  ["    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U $${POSTGRES_USER}\"]\n      interval: 5s\n      timeout: 5s\n      retries: 10","Cada 5 s Docker ejecuta pg_isready dentro del contenedor. Con 10 fallos seguidos lo marca unhealthy. El doble $$ evita que Compose interprete la variable: la resuelve el contenedor."],
+  ["§","Un scheduler por entorno"],
+  ["  scheduler-dev:\n    <<: *scheduler\n    image: ${DEV_IMAGE:-agro-pipeline:local}\n    environment: {APP_ENV: dev, POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}","<<: *scheduler hereda toda la plantilla. image permite apuntar a una imagen publicada (DEV_IMAGE) o usar la local. APP_ENV elige el entorno; POSTGRES_HOST=postgres es el nombre del servicio, que el DNS interno de Docker resuelve."],
+  ["  scheduler-staging: …  APP_ENV: staging\n  scheduler-prod:    …  APP_ENV: prod","Mismos contenedores, otro entorno. Cada uno trabaja con su base (agro_staging, agro_prod) y su carpeta (storage/staging, storage/prod)."],
+  ["§","Servicio grafana"],
+  ["  grafana:\n    image: grafana/grafana-oss:11.4.0\n    environment:\n      GF_SECURITY_ADMIN_USER: admin\n      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-cambiar-esto-tambien}","Imagen oficial con versión fija. Las variables GF_* configuran Grafana sin tocar archivos. La contraseña de admin viene de GRAFANA_ADMIN_PASSWORD (con valor por defecto de desarrollo)."],
+  ["      GF_AUTH_ANONYMOUS_ENABLED: \"true\"\n      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer","Permite ver los dashboards sin iniciar sesión, solo como lector."],
+  ["    ports:\n      - \"${GRAFANA_PORT:-3000}:3000\"\n    volumes:\n      - grafana-data:/var/lib/grafana\n      - ./grafana/provisioning:/etc/grafana/provisioning:ro\n      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro","Publica http://localhost:3000. grafana-data guarda la configuración de Grafana. provisioning y dashboards se montan de solo lectura: Grafana crea sola las fuentes de datos y los tableros desde el repositorio."],
+  ["    depends_on:\n      postgres:\n        condition: service_healthy","Espera a que la base esté lista antes de arrancar."],
+  ["§","Corrida manual"],
+  ["  pipeline:\n    build: .\n    image: agro-pipeline:local\n    …\n    profiles: [\"run\"]","Contenedor para correr el pipeline una sola vez a mano. profiles: [\"run\"] hace que NO se levante con docker compose up; solo cuando lo pedís: docker compose run --rm -e APP_ENV=dev pipeline."],
+  ["§","Volúmenes con nombre"],
+  ["volumes:\n  pgdata:\n  grafana-data:","Declara los dos volúmenes que Docker administra. Viven hasta que ejecutes docker compose down -v."]
+];
+const DF_ANN = [
+  ["FROM python:3.11-slim","Imagen base: Python 3.11 en su variante liviana (slim)."],
+  ["ENV PYTHONDONTWRITEBYTECODE=1 \\\n    PYTHONUNBUFFERED=1","No genera archivos .pyc y no bufferiza la salida: los logs aparecen al instante en docker compose logs."],
+  ["WORKDIR /app","Directorio de trabajo dentro del contenedor."],
+  ["COPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt","Primero se copian solo las dependencias y se instalan. Docker guarda esta capa en caché: si no cambia requirements.txt, no se reinstala nada en el próximo build."],
+  ["COPY config/ config/\nCOPY src/ src/","Después se copian la configuración y el código. Cambian seguido, por eso van al final: solo se reconstruyen estas capas. Consecuencia: editar config/ o src/ exige un nuevo build."],
+  ["RUN useradd --create-home --uid 1000 pipeline && mkdir -p /app/storage && chown pipeline /app/storage","Crea un usuario sin privilegios y la carpeta del lake con sus permisos."],
+  ["USER pipeline","El proceso no corre como root: buena práctica de seguridad."],
+  ["CMD [\"python\", \"-m\", \"src.main\"]","Comando por defecto: una corrida única. Los schedulers lo reemplazan desde el compose con command: python -m src.scheduler."]
+];
+const CMDS = [
+  ["§","Levantar y apagar"],
+  ["docker compose up -d --build","Construye lo necesario y levanta todo en segundo plano."],
+  ["docker compose ps","Lista los contenedores y su estado."],
+  ["docker compose stop","Apaga los contenedores sin borrarlos."],
+  ["docker compose start","Vuelve a encender los que estaban parados."],
+  ["docker compose down","Borra los contenedores y la red. CONSERVA los volúmenes y ./storage."],
+  ["docker compose down -v","Además borra los volúmenes con nombre: SE PIERDE la base (pgdata) y la configuración de Grafana."],
+  ["§","Ver y depurar"],
+  ["docker compose logs -f scheduler-dev","Sigue en vivo los logs del scheduler de DEV (Ctrl+C para salir)."],
+  ["docker compose exec postgres psql -U $POSTGRES_USER -d agro_dev","Abre una consola SQL dentro del contenedor de la base."],
+  ["docker compose exec scheduler-dev sh","Abre una terminal dentro del contenedor del scheduler."],
+  ["§","Ejecutar a mano"],
+  ["docker compose run --rm -e APP_ENV=dev pipeline","Una corrida única del pipeline en DEV (contenedor descartable, --rm lo borra al terminar)."],
+  ["docker compose run --rm -e APP_ENV=dev pipeline python -m src.main --reprocess <batch_id>","Regenera Silver y Gold de un lote desde Bronze."],
+  ["§","Cambios"],
+  ["docker compose up -d --build","Después de editar config/ o src/: reconstruye la imagen y recrea solo los contenedores afectados."],
+  ["docker compose exec postgres bash /docker-entrypoint-initdb.d/00_entornos.sh","Aplica un cambio de esquema SQL en una base que ya existe (idempotente)."],
+  ["docker compose logs --tail 20 grafana","Últimas 20 líneas de Grafana."]
+];
 
 /* ===== Dibujo ===== */
 const svg = $("#net");
@@ -409,41 +600,72 @@ function el(name, attrs = {}, parent){
   if (parent) parent.appendChild(e);
   return e;
 }
+function whale(g, x, y, k = 1){
+  const w = el("g", {transform:`translate(${x},${y}) scale(${k})`}, g);
+  el("path", {d:"M-14 4 C-14 -2 -8 -4 -2 -4 H10 C11 -8 15 -9 18 -6 C16 -2 18 1 18 4 C18 11 8 14 -2 14 C-10 14 -14 10 -14 4 Z", fill:"#2496ed"}, w);
+  [[-10,-10],[-3,-10],[4,-10],[-3,-17]].forEach(([a, b]) => el("rect", {x:a, y:b, width:6, height:5.5, fill:"#2496ed", stroke:"#fff", "stroke-width":.8}, w));
+  el("circle", {cx:12, cy:0, r:1.4, fill:"#fff"}, w);
+  return w;
+}
 function icon(g, d){
-  const c = d.color, s = (a) => el(a[0], a[1], g);
+  const c = d.color, s = a => el(a[0], a[1], g);
   const R = (x,y,w,h,f,rx=4) => s(["rect",{x,y,width:w,height:h,rx,fill:f,stroke:"rgba(0,0,0,.35)","stroke-width":1}]);
   switch (d.type){
     case "cloud": s(["path",{d:"M-26 12 a14 14 0 0 1 4-27 a18 18 0 0 1 34-4 a15 15 0 0 1 8 31 z",fill:"#7cc4ee",stroke:"#2b7bd6","stroke-width":1.5}]); break;
     case "sensor": R(-22,-8,44,24,"#37a96b"); s(["circle",{cx:0,cy:4,r:5,fill:"#fff"}]); s(["path",{d:"M0 -8 V-22 M-8 -17 a10 10 0 0 1 16 0 M-14 -22 a18 18 0 0 1 28 0",stroke:"#1f9d55","stroke-width":2.2,fill:"none"}]); break;
     case "router": R(-30,-14,60,28,"#2b9fd6",14); s(["path",{d:"M-18 -4 H14 M8 -9 L14 -4 L8 1 M18 6 H-14 M-8 1 L-14 6 L-8 11",stroke:"#fff","stroke-width":2.2,fill:"none"}]); break;
-    case "storage": for (let i = 0; i < 3; i++){ s(["ellipse",{cx:0,cy:-14+i*13,rx:26,ry:8,fill:c,stroke:"rgba(0,0,0,.4)"}]); } s(["rect",{x:-26,y:-14,width:52,height:26,fill:c,opacity:.0}]); break;
+    case "storage": for (let i = 0; i < 3; i++) s(["ellipse",{cx:0,cy:-14+i*13,rx:26,ry:8,fill:c,stroke:"rgba(0,0,0,.4)"}]); break;
     case "db": s(["path",{d:"M-22 -12 v26 a22 8 0 0 0 44 0 v-26",fill:"#5b7fa6",stroke:"rgba(0,0,0,.4)"}]); s(["ellipse",{cx:0,cy:-12,rx:22,ry:8,fill:"#86a8cf",stroke:"rgba(0,0,0,.4)"}]); break;
+    case "volume": s(["ellipse",{cx:0,cy:-14,rx:26,ry:8,fill:"#2496ed",stroke:"rgba(0,0,0,.4)"}]); s(["path",{d:"M-26 -14 v26 a26 8 0 0 0 52 0 v-26",fill:"#5db3f5",stroke:"rgba(0,0,0,.4)"}]); s(["path",{d:"M-12 0 h24 M-12 8 h24",stroke:"#fff","stroke-width":2}]); break;
     case "firewall": R(-30,-18,60,36,"#d9603b"); s(["path",{d:"M-30 -6 H30 M-30 6 H30 M-10 -18 V-6 M10 -18 V-6 M0 -6 V6 M-20 6 V18 M20 6 V18",stroke:"#7a2a12","stroke-width":1.6}]); s(["path",{d:"M0 -26 l13 5 v10 c0 8 -6 12 -13 15 c-7 -3 -13 -7 -13 -15 v-10 z",fill:"#fff",stroke:"#d9603b","stroke-width":2,transform:"translate(0,12) scale(.9)"}]); break;
     case "server": R(-20,-26,40,52,c || "#5b7fa6"); for (let i = 0; i < 4; i++) R(-15,-21+i*12,30,8,"rgba(255,255,255,.55)",2); break;
     case "monitor": R(-30,-20,60,36,"#2f3b48"); R(-26,-16,52,28,"#ffffff",2); s(["path",{d:"M-18 8 V-2 M-8 8 V-8 M2 8 V2 M12 8 V-10 M-22 8 H20",stroke:"#2b7bd6","stroke-width":4,fill:"none"}]); R(-10,16,20,5,"#2f3b48",2); break;
+    case "browser": R(-30,-20,60,40,"#fff"); R(-30,-20,60,10,"#5b6b7b",3); s(["circle",{cx:-23,cy:-15,r:2,fill:"#fff"}]); s(["circle",{cx:-16,cy:-15,r:2,fill:"#fff"}]); s(["path",{d:"M-18 0 H18 M-18 8 H8",stroke:"#2b7bd6","stroke-width":3}]); break;
     case "clock": s(["circle",{cx:0,cy:0,r:22,fill:"#fff",stroke:"#1f5fa8","stroke-width":3}]); s(["path",{d:"M0 -12 V0 L9 6",stroke:"#1f5fa8","stroke-width":3,fill:"none","stroke-linecap":"round"}]); break;
     case "file": R(-20,-24,40,48,"#f4c542"); s(["path",{d:"M-12 -10 H12 M-12 0 H12 M-12 10 H4",stroke:"#7a5a00","stroke-width":2.2}]); break;
+    case "yml": R(-26,-24,52,48,"#2496ed"); s(["path",{d:"M-16 -10 H16 M-16 0 H8 M-16 10 H16",stroke:"#fff","stroke-width":2.6}]); whale(g, 14, 14, .55); break;
+    case "image": R(-26,-20,52,40,"#e6f2fd"); s(["path",{d:"M-26 -8 H26",stroke:"#2496ed","stroke-width":2}]); whale(g, 0, 4, 1.1); break;
     case "git": s(["circle",{cx:0,cy:0,r:22,fill:"#24292f"}]); s(["path",{d:"M-8 -10 V10 M-8 -2 C-8 4 6 -2 8 -8",stroke:"#fff","stroke-width":2.4,fill:"none"}]); s(["circle",{cx:-8,cy:-10,r:3.5,fill:"#fff"}]); s(["circle",{cx:-8,cy:10,r:3.5,fill:"#fff"}]); s(["circle",{cx:8,cy:-8,r:3.5,fill:"#fff"}]); break;
     case "ci": R(-28,-18,56,36,"#6f42c1"); s(["path",{d:"M-12 -4 L-4 6 L14 -10",stroke:"#fff","stroke-width":4,fill:"none","stroke-linecap":"round","stroke-linejoin":"round"}]); break;
   }
 }
 
-const gLinks = el("g", {}, svg), gZones = el("g", {}, svg), gDev = el("g", {}, svg), gPdu = el("g", {id:"pdu"}, svg);
-const devEl = {}, linkEl = [];
+const gFrames = el("g", {}, svg), gLinks = el("g", {}, svg), gDev = el("g", {}, svg), gPdu = el("g", {id:"pdu"}, svg);
+const devEl = {}, linkEl = [], frameEl = {};
 
-function zone(x, y, w, h, t){ el("rect", {x, y, width:w, height:h, rx:14, class:"zone"}, gZones); const tx = el("text", {x:x+12, y:y+h-10, class:"zone-t"}, gZones); tx.textContent = t; }
-zone(20, 130, 200, 370, "Fuentes");
-zone(250, 30, 190, 560, "Ingesta");
-zone(480, 190, 440, 200, "Lake Parquet y calidad");
-zone(950, 70, 160, 440, "Salidas del lake");
-zone(1160, 190, 220, 480, "Base y dashboards");
-zone(480, 410, 440, 310, "Código, CI/CD y base");
-zone(20, 520, 200, 200, "Config");
+for (const f of FRAMES){
+  const g = el("g", {}, gFrames);
+  el("rect", {x:f.x, y:f.y, width:f.w, height:f.h, rx:14, class:"frame " + (f.cls === "c" ? "" : f.cls)}, g);
+  if (f.key === "host"){
+    whale(g, f.x + 34, f.y + 24, 1.1);
+    const t = el("text", {x:f.x + 62, y:f.y + 28, class:"zone-t"}, g); t.textContent = "Host: " + f.title + " · red interna 'ingsoftwareetl-1_default'";
+  } else if (f.key === "out"){
+    const t = el("text", {x:f.x + 12, y:f.y - 10, class:"zone-t"}, g); t.textContent = "Fuera de Docker";
+  } else {
+    const hd = el("g", {class:"fhead", tabindex:0, role:"button", "aria-label":f.title + ": abrir ficha técnica"}, g);
+    el("rect", {class:"hbg", x:f.x + 4, y:f.y + 4, width:f.w - 8, height:56, rx:8, fill:"transparent"}, hd);
+    whale(hd, f.x + 28, f.y + 26, 1);
+    const t = el("text", {x:f.x + 54, y:f.y + 22, class:"ft"}, hd); t.textContent = f.title;
+    const u = el("text", {x:f.x + 54, y:f.y + 36, class:"fs"}, hd); u.textContent = f.sub;
+    const st = el("text", {x:f.x + 54, y:f.y + 52, class:"st-pill"}, hd);
+    hd.addEventListener("click", () => openContainer(f.key));
+    hd.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openContainer(f.key); } });
+    frameEl[f.key] = st;
+  }
+}
 
-for (const [a, b, ctl] of LINKS){
-  const A = DEVICES[a], B = DEVICES[b];
-  const p = el("line", {x1:A.x, y1:A.y, x2:B.x, y2:B.y, class:"link" + (ctl ? " ctl" : "")}, gLinks);
-  linkEl.push({a, b, p, ctl:!!ctl});
+function linkPoints(l){
+  const A = DEVICES[l.a], B = DEVICES[l.b];
+  return [[A.x, A.y], ...(l.via || []), [B.x, B.y]];
+}
+for (const l of LINKS){
+  const pts = linkPoints(l);
+  const p = el("polyline", {points:pts.map(q => q.join(",")).join(" "), class:"link" + (l.ctl ? " ctl" : "")}, gLinks);
+  linkEl.push({l, p});
+  if (l.label){
+    const mid = l.lp || [(pts[0][0] + pts[pts.length - 1][0]) / 2, (pts[0][1] + pts[pts.length - 1][1]) / 2 - 8];
+    const t = el("text", {x:mid[0], y:mid[1], class:"lnk-t"}, gLinks); t.textContent = l.label;
+  }
 }
 for (const id in DEVICES){
   const d = DEVICES[id];
@@ -453,6 +675,7 @@ for (const id in DEVICES){
   el("circle", {cx:63, cy:-37, r:5, class:"lamp"}, g);
   const t1 = el("text", {x:0, y:40, "font-weight":600}, g); t1.textContent = d.label;
   const t2 = el("text", {x:0, y:57, class:"sub"}, g); t2.textContent = d.sub;
+  if (d.tag){ const t3 = el("text", {x:0, y:-54, class:"tag"}, g); t3.textContent = d.tag; }
   g.addEventListener("click", () => openDevice(id));
   g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openDevice(id); } });
   devEl[id] = g;
@@ -460,13 +683,16 @@ for (const id in DEVICES){
 
 /* ===== Estado de la simulación ===== */
 let mode = "run", curPdu = PDUS[0], run = null, idx = -1, timer = null, anim = null;
-let powered = new Set();
+let powered = new Set(), frameState = {};
+const FRAME_TXT = {stopped:["○ detenido","var(--off)"], starting:["◐ arrancando…","var(--warn)"], healthy:["● healthy","var(--ok)"], running:["● en ejecución","var(--ok)"]};
+const POWER_MODES = new Set(["docker", "proj"]);
 
-function steps(){ return mode === "run" ? run.steps : SETUP; }
+function steps(){ return mode === "run" ? run.steps : mode === "docker" ? DOCKER_STEPS : PROJECT_STEPS; }
 
 function chipBar(){
   const bar = $("#pduBar"); bar.innerHTML = "";
-  if (mode === "setup"){ bar.innerHTML = '<span class="hint">Los dispositivos están apagados. Cada evento enciende uno, en el orden real en que se arma el proyecto.</span>'; return; }
+  if (mode === "docker"){ bar.innerHTML = '<span class="hint">Todo está apagado. Cada evento muestra lo que hace <b>docker compose up -d --build</b> y enciende lo que corresponda, en el orden real.</span>'; return; }
+  if (mode === "proj"){ bar.innerHTML = '<span class="hint">Del repositorio a producción: Git, CI/CD, imágenes y gobierno de datos.</span>'; return; }
   const lb = document.createElement("span"); lb.className = "hint"; lb.textContent = "Paquete:"; bar.appendChild(lb);
   for (const p of PDUS){
     const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", String(p === curPdu));
@@ -480,26 +706,42 @@ function chipBar(){
 
 function reset(){
   stopAuto();
-  idx = -1; powered = new Set();
+  idx = -1;
   if (mode === "run") run = buildRun(curPdu);
-  chipBar(); render(); renderEvents();
+  chipBar(); applyPower(); render(); renderEvents();
   gPdu.innerHTML = "";
   $("#detail").innerHTML = '<p class="hint">' + (mode === "run"
-    ? "Paquete elegido: <b>" + curPdu.name + "</b>. Apretá <b>Capturar / Avanzar</b> para seguirlo, o <b>Auto</b> para verlo correr solo. Hacé clic en cualquier dispositivo para ver su configuración."
-    : "Apretá <b>Capturar / Avanzar</b> para ir encendiendo cada pieza, en el orden en que se crea todo el proyecto.") + "</p>";
+    ? "Paquete elegido: <b>" + curPdu.name + "</b>. Apretá <b>Capturar / Avanzar</b> para seguirlo, o <b>Auto</b> para verlo correr solo. Hacé clic en cualquier dispositivo para ver su configuración, o en el título de un recuadro azul para ver la ficha de su contenedor Docker."
+    : mode === "docker"
+      ? "Apretá <b>Capturar / Avanzar</b>. Vas a ver, en orden, qué hace Docker Compose: construir la imagen, crear la red y los volúmenes, arrancar PostgreSQL, esperar su healthcheck y recién entonces arrancar los schedulers y Grafana."
+      : "Apretá <b>Capturar / Avanzar</b> para recorrer el proyecto de punta a punta.") + "</p>";
+}
+
+function applyPower(){
+  powered = new Set(); frameState = {};
+  if (mode === "run"){ Object.keys(DEVICES).forEach(k => powered.add(k)); frameState = {scheduler:"running", postgres:"healthy", grafana:"running"}; return; }
+  frameState = {scheduler:"stopped", postgres:"stopped", grafana:"stopped"};
+  const s = steps();
+  if (mode === "proj"){ Object.keys(DEVICES).forEach(k => { if (k !== "git" && k !== "ci" && k !== "img" && k !== "cfg") powered.add(k); }); frameState = {scheduler:"running", postgres:"healthy", grafana:"running"}; }
+  for (let i = 0; i <= idx; i++){ (s[i].on || []).forEach(d => powered.add(d)); Object.assign(frameState, s[i].frames || {}); }
+  if (idx >= 0){ powered.add(s[idx].from); powered.add(s[idx].to); }
 }
 
 function render(){
   const s = steps(), cur = idx >= 0 ? s[idx] : null;
   for (const id in devEl){
-    const g = devEl[id], off = mode === "setup" && !powered.has(id), here = !!cur && cur.to === id;
+    const g = devEl[id], off = POWER_MODES.has(mode) && !powered.has(id), here = !!cur && cur.to === id;
     g.setAttribute("class", "dev" + (off ? " off" : "") + (here ? " at s-" + cur.status : ""));
     g.querySelector(".lamp").setAttribute("class", "lamp" + (off ? "" : " on"));
   }
-  for (const l of linkEl){
-    const up = mode === "run" || (powered.has(l.a) && powered.has(l.b));
+  for (const {l, p} of linkEl){
+    const up = !POWER_MODES.has(mode) || (powered.has(l.a) && powered.has(l.b));
     const hot = !!cur && cur.from !== cur.to && ((cur.from === l.a && cur.to === l.b) || (cur.from === l.b && cur.to === l.a));
-    l.p.setAttribute("class", "link" + (l.ctl ? " ctl" : "") + (up ? " on" : "") + (hot ? " pulse" : ""));
+    p.setAttribute("class", "link" + (l.ctl ? " ctl" : "") + (up ? " on" : "") + (hot ? " pulse" : ""));
+  }
+  for (const k in frameEl){
+    const [txt, col] = FRAME_TXT[frameState[k] || "stopped"];
+    frameEl[k].textContent = txt; frameEl[k].setAttribute("fill", col);
   }
   $("#progress").textContent = "Evento " + Math.max(idx + 1, 0) + " de " + s.length;
   $("#bBack").disabled = idx < 0; $("#bStep").disabled = idx >= s.length - 1; $("#bPlay").disabled = idx >= s.length - 1 && !timer;
@@ -512,17 +754,10 @@ function renderEvents(){
     const tr = document.createElement("tr"); tr.className = "ev" + (i === idx ? " cur" : "");
     const nm = id => (DEVICES[id] ? DEVICES[id].label : id);
     tr.innerHTML = `<td>${i + 1}</td><td>${nm(s.from)}</td><td>${nm(s.to)}</td><td><span class="badge b-${s.status}">${s.type}</span></td><td>ℹ</td>`;
-    tr.onclick = () => { idx = i; applyPower(); render(); renderEvents(); showDetail(s); };
+    tr.onclick = () => { stopAuto(); idx = i; applyPower(); render(); renderEvents(); showDetail(s); };
     body.appendChild(tr);
   });
   const cur = body.querySelector("tr.cur"); if (cur) cur.scrollIntoView({block:"nearest"});
-}
-
-function applyPower(){
-  powered = new Set();
-  if (mode !== "setup") return;
-  for (let i = 0; i <= idx; i++) for (const d of SETUP[i].on) powered.add(d);
-  if (idx >= 0){ powered.add(SETUP[idx].from); powered.add(SETUP[idx].to); }
 }
 
 function recView(kind){
@@ -539,8 +774,9 @@ function recView(kind){
 function esc(s){ return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
 function showDetail(s){
-  let h = `<h3>${esc(s.title)}</h3><span class="badge b-${s.status}">${s.type}</span>`;
+  let h = `<h3>${esc(s.title)}</h3><span class="badge b-${s.status}">${esc(s.type)}</span>`;
   h += `<p>${esc(s.text)}</p>`;
+  if (s.docker) h += `<div class="dnote"><b class="dk">🐳 En Docker:</b> ${s.docker}</div>`;
   if (s.file) h += `<div class="kv"><b>Archivo</b><span><code>${esc(s.file)}</code></span></div>`;
   if (s.rules){
     h += `<table class="rules"><thead><tr><th>Regla</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody>` +
@@ -551,20 +787,30 @@ function showDetail(s){
   $("#detail").innerHTML = h;
 }
 
-/* ===== Animación del paquete ===== */
-function sendPdu(s, done){
+/* ===== Animación del paquete (sigue la polilínea del enlace) ===== */
+function pathFor(a, b){
+  for (const {l} of linkEl){
+    if (l.a === a && l.b === b) return linkPoints(l);
+    if (l.a === b && l.b === a) return linkPoints(l).slice().reverse();
+  }
+  return [[DEVICES[a].x, DEVICES[a].y], [DEVICES[b].x, DEVICES[b].y]];
+}
+function sendPdu(s){
   gPdu.innerHTML = "";
-  if (mode !== "run" || s.from === s.to){ done(); return; }
-  const A = DEVICES[s.from], B = DEVICES[s.to];
+  if (mode !== "run" || s.from === s.to) return;
+  const pts = pathFor(s.from, s.to);
+  const seg = [], tot = pts.slice(1).reduce((acc, p, i) => { const d = Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]); seg.push(d); return acc + d; }, 0);
   const col = s.status === "REJECT" ? "var(--bad)" : s.status === "WARNING" ? "var(--warn)" : curPdu.color;
   const g = el("g", {}, gPdu);
   el("rect", {x:-14, y:-10, width:28, height:20, rx:3, fill:col, stroke:"#fff", "stroke-width":2}, g);
   el("path", {d:"M-14 -10 L0 3 L14 -10", fill:"none", stroke:"#fff", "stroke-width":1.6}, g);
-  const dur = [1800, 1300, 900, 550, 300][+$("#speed").value - 1], t0 = performance.now();
+  const dur = [2200, 1600, 1100, 700, 400][+$("#speed").value - 1], t0 = performance.now();
   const step = now => {
-    const k = Math.min(1, (now - t0) / dur);
-    g.setAttribute("transform", `translate(${A.x + (B.x - A.x) * k},${A.y + (B.y - A.y) * k})`);
-    if (k < 1) anim = requestAnimationFrame(step); else { anim = null; gPdu.innerHTML = ""; done(); }
+    let d = Math.min(1, (now - t0) / dur) * tot, i = 0;
+    while (i < seg.length - 1 && d > seg[i]){ d -= seg[i]; i++; }
+    const k = seg[i] ? Math.min(1, d / seg[i]) : 1;
+    g.setAttribute("transform", `translate(${pts[i][0] + (pts[i + 1][0] - pts[i][0]) * k},${pts[i][1] + (pts[i + 1][1] - pts[i][1]) * k})`);
+    if (now - t0 < dur) anim = requestAnimationFrame(step); else { anim = null; gPdu.innerHTML = ""; }
   };
   anim = requestAnimationFrame(step);
 }
@@ -572,39 +818,74 @@ function sendPdu(s, done){
 function advance(){
   const s = steps();
   if (idx >= s.length - 1){ stopAuto(); return false; }
-  if (anim){ cancelAnimationFrame(anim); anim = null; gPdu.innerHTML = ""; }
+  if (anim){ cancelAnimationFrame(anim); anim = null; }
+  gPdu.innerHTML = "";
   idx++; const ev = s[idx];
-  applyPower(); render(); renderEvents(); showDetail(ev);
-  if (mode === "run") sendPdu(ev, () => {});
+  applyPower(); render(); renderEvents(); showDetail(ev); sendPdu(ev);
   return true;
 }
 function stopAuto(){ if (timer){ clearTimeout(timer); timer = null; } $("#bPlay").textContent = "▶ Auto"; }
 function startAuto(){
-  if (timer) { stopAuto(); return; }
+  if (timer){ stopAuto(); return; }
   $("#bPlay").textContent = "⏸ Pausa";
-  const delay = () => [3200, 2400, 1800, 1100, 700][+$("#speed").value - 1];
-  const tick = () => { if (!advance()) { stopAuto(); render(); return; } timer = setTimeout(tick, delay()); };
+  const delay = () => [4500, 3200, 2400, 1500, 900][+$("#speed").value - 1];
+  const tick = () => { if (!advance()){ stopAuto(); render(); return; } timer = setTimeout(tick, delay()); };
   timer = setTimeout(tick, 0);
 }
+
 /* ===== Ventanas ===== */
-function openDevice(id){
-  const i = INFO[id], d = DEVICES[id];
-  $("#dlgTitle").textContent = i.t;
-  const tabs = [["Resumen", () => `<p>${i.resumen}</p><div class="kv"><b>Tipo</b><span>${esc(d.sub)}</span></div>`],
-                ["Archivos", () => `<p class="hint">Dónde está en el repositorio:</p><ul>${i.files.map(f => `<li><code>${esc(f)}</code></li>`).join("")}</ul>`],
-                ["Código", () => `<pre>${esc(i.code)}</pre>`],
-                ["CLI", () => `<p class="hint">Salida real de una corrida:</p><pre>${esc(i.cli)}</pre>`]];
+function openDialog(title, tabs, docker){
+  $("#dlgTitle").textContent = title;
+  $("#dlgHead").className = "dh" + (docker ? " dk" : "");
   const tb = $("#dlgTabs"); tb.innerHTML = "";
   const show = n => { [...tb.children].forEach((b, k) => b.setAttribute("aria-selected", String(k === n))); $("#dlgBody").innerHTML = tabs[n][1](); };
   tabs.forEach((t, n) => { const b = document.createElement("button"); b.className = "dtab"; b.setAttribute("role", "tab"); b.textContent = t[0]; b.onclick = () => show(n); tb.appendChild(b); });
-  show(0); $("#dlg").showModal();
+  show(0); if (!$("#dlg").open) $("#dlg").showModal();
+  return show;
 }
+function kvTable(rows){ return `<div class="kv">${rows.map(([k, v]) => `<b>${esc(k)}</b><span>${esc(v)}</span>`).join("")}</div>`; }
+function annTable(rows){
+  return `<table class="ann"><tbody>` + rows.map(r => r[0] === "§"
+    ? `<tr><td class="sec" colspan="2">${esc(r[1])}</td></tr>`
+    : `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("") + `</tbody></table>`;
+}
+function cmdTable(rows){
+  return `<table class="cmd"><tbody>` + rows.map(r => r[0] === "§"
+    ? `<tr><td class="sec" colspan="2">${esc(r[1])}</td></tr>`
+    : `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join("") + `</tbody></table>`;
+}
+function openDevice(id){
+  const i = INFO[id], d = DEVICES[id];
+  const ctName = d.ct ? CONTAINERS[d.ct].t.replace("Contenedor ", "") : "";
+  const tabs = [["Resumen", () => `<p>${i.resumen}</p>` + kvTable([["Tipo", d.sub]].concat(d.ct ? [["Corre en", "Contenedor " + ctName]] : [["Corre en", "Fuera de los contenedores"]]))],
+                ["Archivos", () => `<p class="hint">Dónde está en el repositorio:</p><ul>${i.files.map(f => `<li><code>${esc(f)}</code></li>`).join("")}</ul>`],
+                ["Código", () => `<pre>${esc(i.code)}</pre>`],
+                ["CLI", () => `<p class="hint">Salida o comando real:</p><pre>${esc(i.cli)}</pre>`]];
+  if (d.ct) tabs.push(["🐳 Contenedor", () => `<p>Este componente corre dentro del contenedor <b>${esc(ctName)}</b>.</p><button class="btn docker" id="goCt">Abrir la ficha del contenedor</button>`]);
+  const show = openDialog(i.t, tabs, false);
+  if (d.ct){
+    const last = $("#dlgTabs").lastChild, orig = last.onclick;
+    last.onclick = () => { orig(); const b = $("#goCt"); if (b) b.onclick = () => openContainer(d.ct); };
+  }
+}
+function openContainer(key){
+  const c = CONTAINERS[key];
+  openDialog(c.t, [["Resumen", () => `<p>${c.resumen}</p>`],
+    ["Ficha técnica", () => kvTable(c.ficha)],
+    ["docker-compose.yml", () => `<p class="hint">Fragmento real del archivo:</p><pre>${esc(c.yaml)}</pre>`],
+    ["Comandos", () => `<pre>${esc(c.cli)}</pre>`]], true);
+}
+function openYml(){ openDialog("docker-compose.yml explicado línea por línea", [["Línea por línea", () => `<p class="hint">Izquierda: el archivo real del repositorio. Derecha: qué hace.</p>` + annTable(YML_ANN)],
+  ["Conceptos", () => `<ul><li><b>Imagen</b>: plantilla de solo lectura (por ejemplo postgres:16).</li><li><b>Contenedor</b>: instancia en ejecución de una imagen.</li><li><b>Volumen con nombre</b> (pgdata): lo administra Docker, sobrevive al contenedor.</li><li><b>Bind mount</b> (./storage): una carpeta tuya montada dentro del contenedor.</li><li><b>Puerto publicado</b> (3000:3000): hace accesible un puerto del contenedor desde tu PC.</li><li><b>Red de Compose</b>: los contenedores se ven por el nombre del servicio (postgres, grafana…).</li><li><b>depends_on + healthcheck</b>: controlan el orden de arranque.</li><li><b>Perfil</b> (profiles: ["run"]): servicio que solo se levanta si lo pedís.</li></ul>`]], true); }
+function openDf(){ openDialog("Dockerfile explicado línea por línea", [["Línea por línea", () => `<p class="hint">Cada línea crea una capa de la imagen. Docker las guarda en caché: por eso lo que cambia seguido va al final.</p>` + annTable(DF_ANN)]], true); }
+function openCmd(){ openDialog("Comandos Docker del proyecto", [["Los que más se usan", () => cmdTable(CMDS)]], true); }
 
 /* ===== Eventos de la interfaz ===== */
 $("#bStep").onclick = () => { stopAuto(); advance(); };
 $("#bReset").onclick = reset;
 $("#bBack").onclick = () => { stopAuto(); if (idx < 0) return; idx--; gPdu.innerHTML = ""; applyPower(); render(); renderEvents(); if (idx >= 0) showDetail(steps()[idx]); };
 $("#bPlay").onclick = startAuto;
+$("#bYml").onclick = openYml; $("#bDf").onclick = openDf; $("#bCmd").onclick = openCmd;
 $("#dlgX").onclick = () => $("#dlg").close();
 $("#newX").onclick = $("#newCancel").onclick = () => $("#dlgNew").close();
 $("#dlg").addEventListener("click", e => { if (e.target === $("#dlg")) $("#dlg").close(); });
@@ -620,14 +901,15 @@ $("#newForm").addEventListener("submit", e => {
 });
 function setMode(m){
   mode = m; stopAuto();
-  $("#tab-run").setAttribute("aria-selected", String(m === "run")); $("#tab-setup").setAttribute("aria-selected", String(m === "setup"));
+  [["run","#tab-run"],["docker","#tab-docker"],["proj","#tab-proj"]].forEach(([k, id]) => $(id).setAttribute("aria-selected", String(k === m)));
   reset();
 }
 $("#tab-run").onclick = () => setMode("run");
-$("#tab-setup").onclick = () => setMode("setup");
+$("#tab-docker").onclick = () => setMode("docker");
+$("#tab-proj").onclick = () => setMode("proj");
 window.addEventListener("keydown", e => {
   if (document.querySelector("dialog[open]")) return;
-  if (e.key === "ArrowRight") { stopAuto(); advance(); }
+  if (e.key === "ArrowRight"){ stopAuto(); advance(); }
   if (e.key === "ArrowLeft") $("#bBack").click();
 });
 
