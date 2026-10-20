@@ -348,6 +348,7 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 - Documento de proyecto v7: [PDF](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf) · [DOCX](docs/TPO_Pipeline_DataOps_Documento_Final_v7.docx)
 - Cambios sugeridos para la v8: [`docs/cambios_documento_v7.md`](docs/cambios_documento_v7.md)
 - Diagrama de arquitectura: [`docs/arquitectura.excalidraw`](docs/arquitectura.excalidraw)
+- Simulador interactivo del pipeline (para clase): [`docs/simulador_pipeline.html`](docs/simulador_pipeline.html) · guía: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md) · skill para actualizarlo: [`.agents/skills/simulador-pipeline`](.agents/skills/simulador-pipeline/SKILL.md)
 - Presentación final: <!-- TODO: link -->
 - Demo / video: <!-- TODO: link -->
 
