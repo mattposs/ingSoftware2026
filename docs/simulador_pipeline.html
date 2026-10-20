@@ -107,6 +107,19 @@
   form.f input,form.f select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit}
   form.f .full{grid-column:1/-1}
   form.f .chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
+  .cat-fuente{--cat:#1f9d55} .cat-codigo{--cat:#2b7bd6} .cat-alm{--cat:#b9772f} .cat-consumo{--cat:#7a5fc7} .cat-infra{--cat:#5b6b7b}
+  .dev .capbg{fill:var(--cat)}
+  .dev text.cap{fill:#fff;font-size:10.5px;font-weight:700;letter-spacing:.05em}
+  .dev text.run{fill:var(--muted);font-size:10.5px}
+  .band{fill:var(--cat);fill-opacity:.07;stroke:var(--cat);stroke-opacity:.55;stroke-width:1.5}
+  .bt{fill:var(--cat);font-size:15px;font-weight:750;letter-spacing:.02em}
+  .bs{fill:var(--muted);font-size:12.5px}
+  .zone2{fill:none;stroke:var(--cat);stroke-dasharray:5 5;stroke-opacity:.8;stroke-width:1.5}
+  .zt{fill:var(--cat);font-size:11.5px;font-weight:650}
+  .dkp{fill:var(--panel);stroke:var(--docker);stroke-width:1.5}
+  .dkrow{cursor:pointer} .dkrow:hover rect{fill:var(--dockerbg)}
+  .pill{display:inline-block;padding:1px 9px;border-radius:999px;color:#fff;font-size:12px;font-weight:600;background:var(--cat)}
+  .move{margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .legend{display:flex;flex-wrap:wrap;gap:12px;padding:6px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
 </style>
 </head>
@@ -127,14 +140,16 @@
   <section class="card" aria-label="Topología">
     <div class="chips" id="pduBar"></div>
     <div class="canvas-wrap">
-      <svg id="net" viewBox="0 0 1500 910" role="img" aria-label="Topología lógica: contenedores Docker del pipeline"></svg>
+      <svg id="net" viewBox="0 0 1500 1030" role="img" aria-label="Diagrama del pipeline: origen, procesamiento y almacenamiento"></svg>
     </div>
     <div class="legend">
-      <span><span class="dot" style="background:var(--docker)"></span> Recuadro azul = contenedor Docker (clic en su título para ver su ficha)</span>
-      <span><span class="dot" style="background:var(--ok)"></span> OK</span>
-      <span><span class="dot" style="background:var(--warn)"></span> WARNING</span>
-      <span><span class="dot" style="background:var(--bad)"></span> REJECT</span>
-      <span>Línea continua: datos · Línea punteada: control o construcción · Clic en un dispositivo para abrirlo</span>
+      <span><span class="dot" style="background:#1f9d55"></span> 1 · Origen (fuentes)</span>
+      <span><span class="dot" style="background:#2b7bd6"></span> 2 · Procesamiento (código)</span>
+      <span><span class="dot" style="background:#b9772f"></span> 3 · Almacenamiento (capas Medallion)</span>
+      <span><span class="dot" style="background:#7a5fc7"></span> Consumo</span>
+      <span><span class="dot" style="background:#5b6b7b"></span> Infraestructura</span>
+      <span>→ Flecha: hacia dónde va el dato (el código <b>lee</b> o <b>escribe</b>) · Punteada: control o construcción · Clic en un bloque para abrirlo</span>
+      <span><span class="dot" style="background:var(--ok)"></span> OK <span class="dot" style="background:var(--warn)"></span> WARNING <span class="dot" style="background:var(--bad)"></span> REJECT</span>
     </div>
     <div class="controls">
       <button class="btn" id="bReset" title="Volver al inicio">⏮ Reiniciar</button>
@@ -381,7 +396,7 @@ const DOCKER_STEPS = [
    code:"healthcheck:\n  test: [\"CMD-SHELL\", \"pg_isready -U ${POSTGRES_USER}\"]\n  interval: 5s\n  timeout: 5s\n  retries: 10"},
   {on:["sched","extract","iot","cfg","bronze","dq","silver","quar","goldb"], frames:{scheduler:"running"}, from:"wm", to:"sched", type:"Contenedores scheduler", status:"OK", title:"7 · Arrancan los 3 schedulers (dev, staging, prod)",
    text:"Con la base healthy arrancan tres contenedores de la misma imagen: scheduler-dev, scheduler-staging y scheduler-prod. Cada uno recibe su APP_ENV y usa su propia base y su propio lake. Ejecutan python -m src.scheduler, que dispara el pipeline cada 15 minutos.",
-   docker:"El diagrama dibuja un solo recuadro, pero en Docker son <b>tres contenedores</b> idénticos salvo por <code>APP_ENV=dev|staging|prod</code>. Comparten la carpeta <code>./storage</code>, y cada entorno escribe en su subcarpeta (<code>storage/dev</code>, <code>storage/staging</code>, <code>storage/prod</code>).", file:"docker-compose.yml",
+   docker:"En el diagrama, los bloques de código de la fila 2 corren en «el» contenedor scheduler, pero en Docker son <b>tres contenedores</b> idénticos salvo por <code>APP_ENV=dev|staging|prod</code>. Comparten la carpeta <code>./storage</code>, y cada entorno escribe en su subcarpeta (<code>storage/dev</code>, <code>storage/staging</code>, <code>storage/prod</code>).", file:"docker-compose.yml",
    code:"scheduler-dev      APP_ENV=dev      DEV: solo simulador, 20 % de errores\nscheduler-staging  APP_ENV=staging  STAGING: ambas fuentes, 14 %\nscheduler-prod     APP_ENV=prod     PROD: ambas fuentes, 14 %"},
   {on:["graf","browser"], frames:{grafana:"running"}, from:"gold", to:"graf", type:"Contenedor grafana", status:"OK", title:"8 · Arranca Grafana y se publica el puerto 3000",
    text:"Grafana arranca con la configuración ya cargada: la carpeta grafana/provisioning crea las fuentes de datos (una por entorno, con el usuario dashboard de solo lectura) y grafana/dashboards trae los 3 dashboards. Se ve en http://localhost:3000.",
@@ -447,45 +462,60 @@ const PDUS = [
   {id:"meteo", name:"Open-Meteo (horario)", color:"var(--info)", rec:{field_id:"LIT-07", timestamp:"2026-10-14T13:00:00Z", temperature:21.1, temperature_unit:"°C", humidity:55, soil_moisture:0.27, precipitation:0, wind_speed:15, source:"open_meteo"}}
 ];
 
-/* ct = contenedor Docker donde vive el dispositivo */
+/* cat = rol del bloque (fuente, codigo, alm, consumo, infra) · ct = contenedor Docker donde corre */
+const CATN = {fuente:"Origen", codigo:"Código", alm:"Almacenamiento", consumo:"Consumo", infra:"Infraestructura"};
 const DEVICES = {
-  meteo:{x:100,y:280,type:"cloud",label:"Open-Meteo API",sub:"Internet · datos reales"},
-  img:{x:100,y:445,type:"image",label:"Imagen Docker",sub:"agro-pipeline:local"},
-  ci:{x:100,y:605,type:"ci",label:"CI/CD",sub:"GitHub Actions"},
-  git:{x:100,y:765,type:"git",label:"GitHub",sub:"código · ramas · PR"},
-  compose:{x:1345,y:150,type:"yml",label:"docker-compose.yml",sub:"orquesta todo"},
-  browser:{x:1345,y:375,type:"browser",label:"Navegador",sub:"localhost:3000"},
-  sched:{x:500,y:150,type:"clock",label:"Scheduler",sub:"cada 900 s",ct:"scheduler"},
-  extract:{x:500,y:280,type:"router",label:"Extracción",sub:"run_bronze · incremental",ct:"scheduler"},
-  iot:{x:300,y:415,type:"sensor",label:"Simulador IoT",sub:"8 campos · 200 sensores",ct:"scheduler"},
-  cfg:{x:700,y:415,type:"file",label:"config/",sub:"dentro de la imagen",ct:"scheduler"},
-  bronze:{x:700,y:280,type:"storage",label:"Bronze",sub:"Parquet · inmutable",color:"#b9772f",ct:"scheduler",tag:"bind mount ./storage"},
-  dq:{x:900,y:280,type:"firewall",label:"Motor de calidad",sub:"12 reglas DQ01–DQ12",ct:"scheduler"},
-  silver:{x:1100,y:205,type:"storage",label:"Silver",sub:"VALID + WARNING",color:"#8a98a8",ct:"scheduler",tag:"bind mount ./storage"},
-  quar:{x:1100,y:385,type:"storage",label:"Quarantine",sub:"rechazados + motivo",color:"#d64545",ct:"scheduler",tag:"bind mount ./storage"},
-  goldb:{x:900,y:415,type:"router",label:"Transformación Gold",sub:"run_gold · upsert",ct:"scheduler"},
-  wm:{x:500,y:695,type:"db",label:"etl.watermarks",sub:"hasta dónde se leyó",ct:"postgres"},
-  pgvol:{x:700,y:695,type:"volume",label:"Volumen pgdata",sub:"datos persistentes",ct:"postgres"},
-  gold:{x:900,y:695,type:"server",label:"Gold · PostgreSQL",sub:"indicadores y score",color:"#d4a017",ct:"postgres"},
-  graf:{x:1345,y:695,type:"monitor",label:"Grafana",sub:"3 dashboards",ct:"grafana",tag:"puerto 3000"}
+  meteo:{x:330,y:112,cat:"fuente",cap:"FUENTE REAL",type:"cloud",label:"Open-Meteo API",sub:"clima horario por campo",run:"🌐 Internet"},
+  iot:{x:560,y:112,cat:"fuente",cap:"FUENTE SIMULADA",type:"sensor",label:"Sensores IoT",sub:"8 campos · 200 sensores",run:"🐳 simulador (scheduler)",ct:"scheduler"},
+  sched:{x:200,y:315,cat:"codigo",cap:"CÓDIGO · ORQUESTA",type:"clock",label:"Scheduler",sub:"src/scheduler.py",run:"🐳 contenedor scheduler",ct:"scheduler"},
+  extract:{x:430,y:315,cat:"codigo",cap:"CÓDIGO · PASO 1",type:"router",label:"Extracción",sub:"run_bronze()",run:"🐳 contenedor scheduler",ct:"scheduler"},
+  dq:{x:765,y:315,cat:"codigo",cap:"CÓDIGO · PASO 2",type:"firewall",label:"Validación",sub:"run_silver() · 12 reglas",run:"🐳 contenedor scheduler",ct:"scheduler"},
+  goldb:{x:1090,y:315,cat:"codigo",cap:"CÓDIGO · PASO 3",type:"router",label:"Transformación Gold",sub:"run_gold()",run:"🐳 contenedor scheduler",ct:"scheduler"},
+  wm:{x:200,y:545,cat:"alm",cap:"CONTROL",type:"db",label:"etl.watermarks",sub:"hasta dónde se leyó",run:"🐳 postgres",ct:"postgres"},
+  bronze:{x:430,y:545,cat:"alm",cap:"CAPA BRONZE · CRUDO",type:"storage",color:"#b9772f",label:"Bronze",sub:"Parquet, tal cual llegó",run:"📁 carpeta ./storage"},
+  silver:{x:765,y:545,cat:"alm",cap:"CAPA SILVER · LIMPIO",type:"storage",color:"#8a98a8",label:"Silver",sub:"VALID + WARNING",run:"📁 carpeta ./storage"},
+  quar:{x:600,y:715,cat:"alm",cap:"QUARANTINE · RECHAZOS",type:"storage",color:"#d64545",label:"Quarantine",sub:"INVALID + motivo",run:"📁 carpeta ./storage"},
+  gold:{x:1090,y:545,cat:"alm",cap:"CAPA GOLD · NEGOCIO",type:"server",color:"#d4a017",label:"Gold",sub:"tablas gold.* (SQL)",run:"🐳 postgres · pgdata",ct:"postgres"},
+  browser:{x:1365,y:315,cat:"consumo",cap:"USUARIO",type:"browser",label:"Navegador",sub:"localhost:3000",run:"💻 tu PC"},
+  graf:{x:1365,y:545,cat:"consumo",cap:"VISUALIZACIÓN",type:"monitor",label:"Grafana",sub:"3 dashboards",run:"🐳 contenedor grafana",ct:"grafana"},
+  git:{x:150,y:905,cat:"infra",cap:"REPOSITORIO",type:"git",label:"GitHub",sub:"código · ramas · PR",run:"github.com"},
+  ci:{x:360,y:905,cat:"infra",cap:"AUTOMATIZACIÓN",type:"ci",label:"CI/CD",sub:"GitHub Actions",run:"en la nube de GitHub"},
+  img:{x:570,y:905,cat:"infra",cap:"DOCKER · IMAGEN",type:"image",label:"Imagen Docker",sub:"agro-pipeline:local",run:"🐳 docker build"},
+  cfg:{x:780,y:905,cat:"infra",cap:"CONFIGURACIÓN",type:"file",label:"config/",sub:"reglas, campos, entornos",run:"se copia a la imagen"},
+  pgvol:{x:990,y:905,cat:"infra",cap:"DOCKER · VOLUMEN",type:"volume",label:"Volumen pgdata",sub:"disco de PostgreSQL",run:"🐳 volumen con nombre",ct:"postgres"},
+  compose:{x:1200,y:905,cat:"infra",cap:"DOCKER · COMPOSE",type:"yml",label:"docker-compose.yml",sub:"levanta todo",run:"🐳 docker compose"}
 };
-const FRAMES = [
-  {key:"host", x:195, y:12, w:1295, h:885, title:"PC del docente · Docker Desktop", sub:"", cls:"host"},
-  {key:"out", x:12, y:195, w:170, h:640, title:"", sub:"", cls:"out"},
-  {key:"scheduler", x:225, y:40, w:970, h:463, title:"Contenedor scheduler-dev · -staging · -prod", sub:"imagen agro-pipeline:local", cls:"c"},
-  {key:"postgres", x:410, y:545, w:600, h:335, title:"Contenedor postgres", sub:"imagen postgres:16 · puerto 5432", cls:"c"},
-  {key:"grafana", x:1215, y:545, w:265, h:335, title:"Contenedor grafana", sub:"imagen grafana-oss:11.4.0", cls:"c"}
+/* Franjas por rol: es lo primero que tiene que leer el alumno */
+const BANDS = [
+  {x:15,y:15,w:1210,h:180,cat:"fuente",title:"1 · ORIGEN",sub:"Fuentes: de dónde vienen los datos. El pipeline no las controla, solo las lee."},
+  {x:15,y:205,w:1210,h:200,cat:"codigo",title:"2 · PROCESAMIENTO",sub:"Bloques de código Python: leen, validan y transforman. No guardan nada: escriben en el almacenamiento."},
+  {x:15,y:415,w:1210,h:385,cat:"alm",title:"3 · ALMACENAMIENTO (DESTINO)",sub:"Capas Medallion: Bronze (crudo) → Silver (limpio) → Gold (negocio). Quarantine guarda los rechazados."},
+  {x:15,y:810,w:1475,h:205,cat:"infra",title:"4 · INFRAESTRUCTURA",sub:"Cómo se construye y se ejecuta: Git, CI/CD, imagen Docker, configuración y docker-compose."},
+  {x:1235,y:205,w:255,h:595,cat:"consumo",title:"5 · CONSUMO",sub:""}
 ];
+/* Sub-zonas dentro del almacenamiento: dónde vive físicamente cada capa */
+const ZONES = [
+  {x:335,y:458,w:600,h:337,cat:"alm",label:"Lake Parquet · carpeta ./storage del host"},
+  {x:116,y:458,w:168,h:172,cat:"alm",label:"PostgreSQL"},
+  {x:1004,y:458,w:172,h:172,cat:"alm",label:"PostgreSQL · agro_<entorno>"}
+];
+/* Enlaces: a → b es el sentido del dato. label = qué hace el código (lee / escribe) */
 const LINKS = [
-  {a:"sched",b:"extract"}, {a:"meteo",b:"extract",label:"HTTPS · Internet", lp:[300,270]}, {a:"iot",b:"extract"},
-  {a:"cfg",b:"extract",ctl:true}, {a:"cfg",b:"dq",ctl:true}, {a:"extract",b:"bronze"},
-  {a:"bronze",b:"dq"}, {a:"dq",b:"silver"}, {a:"dq",b:"quar"}, {a:"silver",b:"goldb"}, {a:"quar",b:"goldb"},
-  {a:"extract",b:"wm",label:"red interna · postgres:5432", lp:[500,520]},
-  {a:"goldb",b:"gold",label:"red interna · postgres:5432", lp:[900,525]},
-  {a:"pgvol",b:"gold",ctl:true}, {a:"gold",b:"graf",label:"postgres:5432 · solo lectura", lp:[1120,685]},
-  {a:"graf",b:"browser",label:"puerto 3000", lp:[1345,535]},
-  {a:"img",b:"sched",ctl:true,label:"docker build", lp:[230,345]}, {a:"ci",b:"img",ctl:true}, {a:"git",b:"ci",ctl:true},
-  {a:"compose",b:"sched",ctl:true}
+  {a:"meteo",b:"extract",label:"trae datos (HTTPS)"}, {a:"iot",b:"extract",label:"genera lecturas"},
+  {a:"sched",b:"extract",ctl:true,label:"dispara", lp:[315,305]},
+  {a:"extract",b:"wm",both:true,label:"lee / actualiza", lp:[318,399]},
+  {a:"extract",b:"bronze",label:"escribe", lp:[430,399]},
+  {a:"bronze",b:"dq",label:"lee el lote", lp:[643,399]},
+  {a:"dq",b:"silver",label:"escribe válidos", lp:[790,399]},
+  {a:"dq",b:"quar",label:"escribe rechazados", lp:[705,640]},
+  {a:"silver",b:"goldb",label:"lee", lp:[971,399]},
+  {a:"quar",b:"goldb",via:[[985,715],[985,430],[1060,430]],label:"cuenta rechazos", lp:[835,707]},
+  {a:"goldb",b:"gold",label:"escribe (upsert SQL)", lp:[1090,399]},
+  {a:"gold",b:"graf",label:"SQL solo lectura", lp:[1228,535]},
+  {a:"graf",b:"browser",label:"puerto 3000"},
+  {a:"git",b:"ci",ctl:true}, {a:"ci",b:"img",ctl:true,label:"docker build"}, {a:"cfg",b:"img",ctl:true,label:"se copia"},
+  {a:"compose",b:"img",ctl:true,via:[[1200,1002],[570,1002]],label:"usa la imagen", lp:[885,997]},
+  {a:"pgvol",b:"gold",ctl:true,label:"guarda los datos de Gold", lp:[1010,800]}
 ];
 
 /* Contenedores Docker: ficha técnica real, tomada de docker-compose.yml */
@@ -630,52 +660,77 @@ function icon(g, d){
   }
 }
 
-const gFrames = el("g", {}, svg), gLinks = el("g", {}, svg), gDev = el("g", {}, svg), gPdu = el("g", {id:"pdu"}, svg);
+const defs = el("defs", {}, svg);
+[["on","#1f9d55"],["off","#aab4bf"],["hot","#2b7bd6"]].forEach(([k, c]) => {
+  const m = el("marker", {id:"m-" + k, viewBox:"0 0 10 10", refX:9, refY:5, markerWidth:7, markerHeight:7, orient:"auto-start-reverse"}, defs);
+  el("path", {d:"M0 0 L10 5 L0 10 z", fill:c}, m);
+});
+const gBands = el("g", {}, svg), gLinks = el("g", {}, svg), gDev = el("g", {}, svg), gPdu = el("g", {id:"pdu"}, svg);
 const devEl = {}, linkEl = [], frameEl = {};
 
-for (const f of FRAMES){
-  const g = el("g", {}, gFrames);
-  el("rect", {x:f.x, y:f.y, width:f.w, height:f.h, rx:14, class:"frame " + (f.cls === "c" ? "" : f.cls)}, g);
-  if (f.key === "host"){
-    whale(g, f.x + 34, f.y + 24, 1.1);
-    const t = el("text", {x:f.x + 62, y:f.y + 28, class:"zone-t"}, g); t.textContent = "Host: " + f.title + " · red interna 'ingsoftwareetl-1_default'";
-  } else if (f.key === "out"){
-    const t = el("text", {x:f.x + 12, y:f.y - 10, class:"zone-t"}, g); t.textContent = "Fuera de Docker";
-  } else {
-    const hd = el("g", {class:"fhead", tabindex:0, role:"button", "aria-label":f.title + ": abrir ficha técnica"}, g);
-    el("rect", {class:"hbg", x:f.x + 4, y:f.y + 4, width:f.w - 8, height:56, rx:8, fill:"transparent"}, hd);
-    whale(hd, f.x + 28, f.y + 26, 1);
-    const t = el("text", {x:f.x + 54, y:f.y + 22, class:"ft"}, hd); t.textContent = f.title;
-    const u = el("text", {x:f.x + 54, y:f.y + 36, class:"fs"}, hd); u.textContent = f.sub;
-    const st = el("text", {x:f.x + 54, y:f.y + 52, class:"st-pill"}, hd);
-    hd.addEventListener("click", () => openContainer(f.key));
-    hd.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openContainer(f.key); } });
-    frameEl[f.key] = st;
-  }
+for (const b of BANDS){
+  const g = el("g", {class:"cat-" + b.cat}, gBands);
+  el("rect", {x:b.x, y:b.y, width:b.w, height:b.h, rx:14, class:"band"}, g);
+  const t = el("text", {x:b.x + 16, y:b.y + 22}, g);
+  const t1 = el("tspan", {class:"bt"}, t); t1.textContent = b.title;
+  if (b.sub){ const t2 = el("tspan", {class:"bs", dx:14}, t); t2.textContent = b.sub; }
+}
+for (const z of ZONES){
+  const g = el("g", {class:"cat-" + z.cat}, gBands);
+  el("rect", {x:z.x, y:z.y, width:z.w, height:z.h, rx:10, class:"zone2"}, g);
+  const t = el("text", {x:z.x + 10, y:z.y + z.h - 7, class:"zt"}, g); t.textContent = z.label;
 }
 
+/* Panel de contenedores Docker (arriba a la derecha) */
+(function dockerPanel(){
+  const g = el("g", {}, gBands), x = 1235, y = 15;
+  el("rect", {x, y, width:255, height:180, rx:14, class:"dkp"}, g);
+  whale(g, x + 24, y + 24, 1);
+  const t = el("text", {x:x + 46, y:y + 28, class:"ft"}, g); t.textContent = "Contenedores Docker";
+  [["scheduler","scheduler-dev/-staging/-prod"],["postgres","postgres"],["grafana","grafana"]].forEach(([k, name], i) => {
+    const r = el("g", {class:"dkrow", tabindex:0, role:"button", "aria-label":"Contenedor " + name + ": abrir ficha"}, g);
+    el("rect", {x:x + 8, y:y + 44 + i * 44, width:239, height:40, rx:8, fill:"transparent"}, r);
+    const n = el("text", {x:x + 18, y:y + 61 + i * 44, class:"fs", "font-weight":650}, r); n.textContent = "🐳 " + name;
+    const st = el("text", {x:x + 18, y:y + 77 + i * 44, class:"st-pill"}, r);
+    r.addEventListener("click", () => openContainer(k));
+    r.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openContainer(k); } });
+    frameEl[k] = st;
+  });
+})();
+
+const HW = 79, HH = 68;
+function clip(from, c){
+  const dx = from[0] - c[0], dy = from[1] - c[1];
+  if (!dx && !dy) return c;
+  const t = Math.min(dx ? HW / Math.abs(dx) : Infinity, dy ? HH / Math.abs(dy) : Infinity);
+  return t >= 1 ? c : [c[0] + dx * t, c[1] + dy * t];
+}
 function linkPoints(l){
   const A = DEVICES[l.a], B = DEVICES[l.b];
-  return [[A.x, A.y], ...(l.via || []), [B.x, B.y]];
+  const pts = [[A.x, A.y], ...(l.via || []), [B.x, B.y]], n = pts.length;
+  pts[0] = clip(pts[1], pts[0]); pts[n - 1] = clip(pts[n - 2], pts[n - 1]);
+  return pts;
 }
 for (const l of LINKS){
   const pts = linkPoints(l);
   const p = el("polyline", {points:pts.map(q => q.join(",")).join(" "), class:"link" + (l.ctl ? " ctl" : "")}, gLinks);
-  linkEl.push({l, p});
+  linkEl.push({l, p, pts});
   if (l.label){
-    const mid = l.lp || [(pts[0][0] + pts[pts.length - 1][0]) / 2, (pts[0][1] + pts[pts.length - 1][1]) / 2 - 8];
+    const mid = l.lp || [(pts[0][0] + pts[pts.length - 1][0]) / 2, (pts[0][1] + pts[pts.length - 1][1]) / 2 - 6];
     const t = el("text", {x:mid[0], y:mid[1], class:"lnk-t"}, gLinks); t.textContent = l.label;
   }
 }
 for (const id in DEVICES){
   const d = DEVICES[id];
-  const g = el("g", {class:"dev", transform:`translate(${d.x},${d.y})`, tabindex:0, role:"button", "aria-label":d.label + ": abrir configuración"}, gDev);
-  el("rect", {class:"box", x:-75, y:-48, width:150, height:114, rx:10}, g);
+  const g = el("g", {class:"dev cat-" + d.cat, transform:`translate(${d.x},${d.y})`, tabindex:0, role:"button", "aria-label":CATN[d.cat] + ": " + d.label + ". Abrir detalle"}, gDev);
+  el("rect", {class:"box", x:-75, y:-64, width:150, height:128, rx:10}, g);
+  el("path", {class:"capbg", d:"M-75 -44 V-54 a10 10 0 0 1 10 -10 H65 a10 10 0 0 1 10 10 V-44 Z"}, g);
+  const c = el("text", {x:0, y:-50, class:"cap"}, g); c.textContent = d.cap;
   const ig = el("g", {transform:"translate(0,-12)"}, g); icon(ig, d);
-  el("circle", {cx:63, cy:-37, r:5, class:"lamp"}, g);
-  const t1 = el("text", {x:0, y:40, "font-weight":600}, g); t1.textContent = d.label;
-  const t2 = el("text", {x:0, y:57, class:"sub"}, g); t2.textContent = d.sub;
-  if (d.tag){ const t3 = el("text", {x:0, y:-54, class:"tag"}, g); t3.textContent = d.tag; }
+  el("circle", {cx:-62, cy:-34, r:5, class:"lamp"}, g);
+  const t1 = el("text", {x:0, y:31, "font-weight":600}, g); t1.textContent = d.label;
+  const t2 = el("text", {x:0, y:46, class:"sub"}, g); t2.textContent = d.sub;
+  const t3 = el("text", {x:0, y:59, class:"run"}, g); t3.textContent = d.run;
   g.addEventListener("click", () => openDevice(id));
   g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openDevice(id); } });
   devEl[id] = g;
@@ -711,7 +766,7 @@ function reset(){
   chipBar(); applyPower(); render(); renderEvents();
   gPdu.innerHTML = "";
   $("#detail").innerHTML = '<p class="hint">' + (mode === "run"
-    ? "Paquete elegido: <b>" + curPdu.name + "</b>. Apretá <b>Capturar / Avanzar</b> para seguirlo, o <b>Auto</b> para verlo correr solo. Hacé clic en cualquier dispositivo para ver su configuración, o en el título de un recuadro azul para ver la ficha de su contenedor Docker."
+    ? "Paquete elegido: <b>" + curPdu.name + "</b>. Apretá <b>Capturar / Avanzar</b> para seguirlo, o <b>Auto</b> para verlo correr solo. Cómo leer el diagrama: arriba el <b>origen</b> de los datos, en el medio el <b>código</b> que los procesa y abajo el <b>almacenamiento</b> donde quedan (Bronze → Silver → Gold, y Quarantine para los rechazados). Cada flecha dice si el código <b>lee</b> o <b>escribe</b>. Clic en un bloque para abrirlo; el panel <b>Contenedores Docker</b> (arriba a la derecha) muestra dónde corre cada cosa."
     : mode === "docker"
       ? "Apretá <b>Capturar / Avanzar</b>. Vas a ver, en orden, qué hace Docker Compose: construir la imagen, crear la red y los volúmenes, arrancar PostgreSQL, esperar su healthcheck y recién entonces arrancar los schedulers y Grafana."
       : "Apretá <b>Capturar / Avanzar</b> para recorrer el proyecto de punta a punta.") + "</p>";
@@ -731,13 +786,16 @@ function render(){
   const s = steps(), cur = idx >= 0 ? s[idx] : null;
   for (const id in devEl){
     const g = devEl[id], off = POWER_MODES.has(mode) && !powered.has(id), here = !!cur && cur.to === id;
-    g.setAttribute("class", "dev" + (off ? " off" : "") + (here ? " at s-" + cur.status : ""));
+    g.setAttribute("class", "dev cat-" + DEVICES[id].cat + (off ? " off" : "") + (here ? " at s-" + cur.status : ""));
     g.querySelector(".lamp").setAttribute("class", "lamp" + (off ? "" : " on"));
   }
   for (const {l, p} of linkEl){
     const up = !POWER_MODES.has(mode) || (powered.has(l.a) && powered.has(l.b));
     const hot = !!cur && cur.from !== cur.to && ((cur.from === l.a && cur.to === l.b) || (cur.from === l.b && cur.to === l.a));
     p.setAttribute("class", "link" + (l.ctl ? " ctl" : "") + (up ? " on" : "") + (hot ? " pulse" : ""));
+    const mk = "url(#m-" + (hot ? "hot" : up ? "on" : "off") + ")";
+    p.setAttribute("marker-end", mk);
+    if (l.both) p.setAttribute("marker-start", mk);
   }
   for (const k in frameEl){
     const [txt, col] = FRAME_TXT[frameState[k] || "stopped"];
@@ -773,8 +831,19 @@ function recView(kind){
 
 function esc(s){ return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
+function pill(id){
+  const d = DEVICES[id];
+  return d ? `<span class="pill cat-${d.cat}">${CATN[d.cat]}: ${esc(d.label)}</span>` : "";
+}
+function moveLine(s){
+  if (mode !== "run" || !DEVICES[s.from] || !DEVICES[s.to]) return "";
+  if (s.from === s.to) return `<div class="move">${pill(s.to)} <span class="hint">trabajo interno del bloque</span></div>`;
+  const l = LINKS.find(k => (k.a === s.from && k.b === s.to) || (k.a === s.to && k.b === s.from));
+  return `<div class="move">${pill(s.from)} <b>→</b> ${pill(s.to)}${l && l.label ? ` <span class="hint">· ${esc(l.label)}</span>` : ""}</div>`;
+}
 function showDetail(s){
   let h = `<h3>${esc(s.title)}</h3><span class="badge b-${s.status}">${esc(s.type)}</span>`;
+  h += moveLine(s);
   h += `<p>${esc(s.text)}</p>`;
   if (s.docker) h += `<div class="dnote"><b class="dk">🐳 En Docker:</b> ${s.docker}</div>`;
   if (s.file) h += `<div class="kv"><b>Archivo</b><span><code>${esc(s.file)}</code></span></div>`;
@@ -789,9 +858,9 @@ function showDetail(s){
 
 /* ===== Animación del paquete (sigue la polilínea del enlace) ===== */
 function pathFor(a, b){
-  for (const {l} of linkEl){
-    if (l.a === a && l.b === b) return linkPoints(l);
-    if (l.a === b && l.b === a) return linkPoints(l).slice().reverse();
+  for (const {l, pts} of linkEl){
+    if (l.a === a && l.b === b) return pts;
+    if (l.a === b && l.b === a) return pts.slice().reverse();
   }
   return [[DEVICES[a].x, DEVICES[a].y], [DEVICES[b].x, DEVICES[b].y]];
 }
@@ -857,7 +926,7 @@ function cmdTable(rows){
 function openDevice(id){
   const i = INFO[id], d = DEVICES[id];
   const ctName = d.ct ? CONTAINERS[d.ct].t.replace("Contenedor ", "") : "";
-  const tabs = [["Resumen", () => `<p>${i.resumen}</p>` + kvTable([["Tipo", d.sub]].concat(d.ct ? [["Corre en", "Contenedor " + ctName]] : [["Corre en", "Fuera de los contenedores"]]))],
+  const tabs = [["Resumen", () => `<p>${pill(id)}</p><p>${i.resumen}</p>` + kvTable([["Rol", CATN[d.cat] + " · " + d.cap.toLowerCase()], ["Detalle", d.sub], ["Dónde está / corre", d.run]].concat(d.ct ? [["Contenedor Docker", ctName]] : []))],
                 ["Archivos", () => `<p class="hint">Dónde está en el repositorio:</p><ul>${i.files.map(f => `<li><code>${esc(f)}</code></li>`).join("")}</ul>`],
                 ["Código", () => `<pre>${esc(i.code)}</pre>`],
                 ["CLI", () => `<p class="hint">Salida o comando real:</p><pre>${esc(i.cli)}</pre>`]];
