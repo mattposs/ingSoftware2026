@@ -1,0 +1,9 @@
+usuario: dashboard
+$ SELECT count(*) AS filas_gold FROM gold.daily_field_metrics
+217
+$ SELECT count(*) FROM etl.watermarks
+ERROR:  permission denied for schema etl
+LINE 1: SELECT count(*) FROM etl.watermarks
+                             ^
+$ INSERT INTO gold.fields VALUES ('X','x','x',0,0,0,0)
+ERROR:  permission denied for table fields

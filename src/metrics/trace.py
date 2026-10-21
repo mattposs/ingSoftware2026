@@ -14,7 +14,7 @@ seguirlos en el dashboard:
 from datetime import UTC, datetime
 
 import pandas as pd
-from sqlalchemy import Engine, text
+from sqlalchemy import Date, DateTime, Engine, text
 
 from src.config import MEASUREMENT_VARIABLES
 from src.validation.engine import REJECT, WARNING, parse_timestamps
@@ -159,8 +159,11 @@ def save_traces(engine: Engine, batch_id: str, traces: pd.DataFrame, steps: pd.D
     with engine.begin() as conn:
         conn.execute(text("DELETE FROM gold.etl_trace WHERE _batch_id = :b"), {"b": batch_id})
         if not traces.empty:
+            # Tipos explícitos: en un lote con solo rechazados, fecha_negocio queda toda vacía y pandas
+            # la enviaría como texto, que PostgreSQL no acepta en una columna DATE.
             traces.assign(created_at=pd.Timestamp(datetime.now(UTC))).to_sql(
-                "etl_trace", con=conn, schema="gold", if_exists="append", index=False)
+                "etl_trace", con=conn, schema="gold", if_exists="append", index=False,
+                dtype={"fecha_negocio": Date(), "measured_at": DateTime(timezone=True)})
             steps.to_sql("etl_trace_steps", con=conn, schema="gold", if_exists="append", index=False)
 
 

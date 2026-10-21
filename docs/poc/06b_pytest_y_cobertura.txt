@@ -1,0 +1,57 @@
+$ python -m ruff check .
+All checks passed!
+[código de salida: 0]
+
+$ python -m src.validation.check_rules
+[RULES] OK: 12 reglas y 8 campos válidos.
+[código de salida: 0]
+
+$ python -m pytest --cov=src --cov-report=term-missing -q -p no:cacheprovider
+........................................................................ [ 77%]
+.....................                                                    [100%]
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.13.5-final-0 _______________
+
+Name                                 Stmts   Miss  Cover   Missing
+------------------------------------------------------------------
+src\__init__.py                          0      0   100%
+src\common\__init__.py                   0      0   100%
+src\common\db.py                        28      0   100%
+src\common\lake.py                      37      0   100%
+src\common\state.py                     12      0   100%
+src\config.py                           57      0   100%
+src\governance\__init__.py               0      0   100%
+src\governance\catalog.py               34     34     0%   10-170
+src\governance\catalog_manager.py       34      1    97%   75
+src\governance\dict_generator.py        34      0   100%
+src\governance\schema_extractor.py      17      4    76%   44-47
+src\ingestion\__init__.py                0      0   100%
+src\ingestion\iot_simulator.py          83      1    99%   84
+src\ingestion\open_meteo.py             40      7    82%   41-47
+src\ingestion\schema.py                 13      0   100%
+src\main.py                             22     22     0%   10-41
+src\metrics\__init__.py                  0      0   100%
+src\metrics\quality.py                  28      1    96%   77
+src\metrics\trace.py                   112      1    99%   183
+src\pipeline.py                         92      6    93%   73, 128-130, 137-138
+src\scheduler.py                        22     22     0%   10-36
+src\transformation\__init__.py           0      0   100%
+src\transformation\gold.py              35      0   100%
+src\validation\__init__.py               0      0   100%
+src\validation\check_rules.py           46     13    72%   27, 36-37, 47, 51, 55, 60-65, 69
+src\validation\engine.py               144      2    99%   172, 188
+------------------------------------------------------------------
+TOTAL                                  890    114    87%
+93 passed in 30.64s
+[código de salida: 0]
+
+$ python -m coverage report --include=src/validation/* --fail-under=80
+Name                            Stmts   Miss  Cover
+---------------------------------------------------
+src\validation\__init__.py          0      0   100%
+src\validation\check_rules.py      46     13    72%
+src\validation\engine.py          144      2    99%
+---------------------------------------------------
+TOTAL                             190     15    92%
+[código de salida: 0]
+

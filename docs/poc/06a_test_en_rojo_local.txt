@@ -1,0 +1,17 @@
+$ pytest -q tests/   (rama de demostración: config/rules.yaml con DQ08 min: -100)
+E   assert np.False_
+C:\Users\Matt_Poss\OneDrive\Facultad\2026\Segundo cuatrimestre\INGENIERÍA DE SOFTWARE\TPO\IngSoftwareETL-1\tests\test_integration_db.py:109: assert np.False_
+E   assert (1 - (12 / 154)) >= 0.95
+C:\Users\Matt_Poss\OneDrive\Facultad\2026\Segundo cuatrimestre\INGENIERÍA DE SOFTWARE\TPO\IngSoftwareETL-1\tests\test_pipeline_units.py:32: assert (1 - (12 / 154)) >= 0.95
+E   assert (1 - (12 / 154)) >= 0.95
+C:\Users\Matt_Poss\OneDrive\Facultad\2026\Segundo cuatrimestre\INGENIERÍA DE SOFTWARE\TPO\IngSoftwareETL-1\tests\test_pipeline_units.py:32: assert (1 - (12 / 154)) >= 0.95
+E   AssertionError: assert 0 == 1
+C:\Users\Matt_Poss\OneDrive\Facultad\2026\Segundo cuatrimestre\INGENIERÍA DE SOFTWARE\TPO\IngSoftwareETL-1\tests\test_rules.py:102: AssertionError: assert 0 == 1
+E   AssertionError: assert 'DQ07' == 'DQ07;DQ08'
+C:\Users\Matt_Poss\OneDrive\Facultad\2026\Segundo cuatrimestre\INGENIERÍA DE SOFTWARE\TPO\IngSoftwareETL-1\tests\test_rules.py:191: AssertionError: assert 'DQ07' == 'DQ07;DQ08'
+FAILED tests/test_integration_db.py::test_gold_no_tiene_registros_invalidos
+FAILED tests/test_pipeline_units.py::test_reglas_detectan_al_menos_95_por_ciento_de_errores_inyectados[2]
+FAILED tests/test_pipeline_units.py::test_reglas_detectan_al_menos_95_por_ciento_de_errores_inyectados[3]
+FAILED tests/test_rules.py::test_dq08_precipitacion_no_negativa[-0.1-1] - Ass...
+FAILED tests/test_rules.py::test_multiples_motivos_de_rechazo - AssertionErro...
+5 failed, 88 passed in 23.75s

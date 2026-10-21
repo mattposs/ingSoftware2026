@@ -160,3 +160,23 @@ def test_precipitacion_duplicada_no_se_suma_y_el_segundo_registro_va_a_quarantin
     assert quarantine.loc[0, "_rejection_reasons"] == "DQ05"
     assert quarantine.loc[0, "precipitation"] == 5.0
     assert list(zip(errors["rule_id"], errors["action"], strict=True)) == [("DQ05", "REJECT")]
+
+
+def test_lote_solo_con_rechazados_no_rompe_las_trazas(engine):
+    # Un lote cuyo único registro es rechazado: las trazas no tienen fecha de Gold (fecha_negocio vacía).
+    cfg, settings = load_pipeline(), get_settings()
+    batch = "lote-solo-rechazos"
+    df = lake.enrich_with_lineage(bronze([reading(humidity=135.0, _batch_id=batch)]).drop(columns="_batch_id"),
+                                  source_system="iot_simulator", batch_id=batch)
+    lake.write_parquet(df, settings.storage_path, "bronze", cfg["domain"], "iot_simulator", batch)
+
+    pipeline.run_silver(engine, batch, now=NOW)
+    pipeline.run_gold(engine, batch)
+
+    with engine.connect() as conn:
+        trace = pd.read_sql(text("SELECT dq_status, fecha_negocio FROM gold.etl_trace WHERE _batch_id = :b"), conn,
+                            params={"b": batch})
+        status = conn.execute(text("SELECT status FROM gold.dq_run_metrics WHERE _batch_id = :b"), {"b": batch}).scalar()
+    assert list(trace["dq_status"]) == ["INVALID"]
+    assert trace["fecha_negocio"].isna().all()
+    assert status == "ok"
