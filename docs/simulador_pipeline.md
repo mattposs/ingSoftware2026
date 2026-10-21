@@ -48,7 +48,8 @@ Paquetes de ejemplo:
 | Lectura válida | VALID | El camino feliz hasta Gold |
 | Temperatura 46 °C | WARNING (DQ09) | Se publica con aviso, pero no cuenta en el score estricto |
 | Humedad 135 % | INVALID (DQ07) | Un rechazo en una sola variable invalida el registro completo |
-| Duplicado de precipitación | INVALID (DQ05) | El duplicado no se suma y va a Quarantine |
+| LIT-05 · humedad de suelo 1,35 | INVALID (DQ10) | Un valor físicamente imposible (mayor a 1) va a Quarantine: es el caso real de la POC (sección 11) |
+| LIT-02 · lluvia duplicada 2,6 mm | INVALID (DQ05) | La lluvia repetida no se suma en Gold y va a Quarantine: es el caso de la POC (sección 11) |
 | Open-Meteo | VALID | La fuente real, que llega por Internet |
 
 Con **＋ Crear paquete propio** los alumnos cambian los valores y ven qué regla lo frena.
@@ -106,7 +107,7 @@ En el panel **Información del evento** se ve, para cada paso:
 ## Qué es simulado y qué es real
 
 - **Los nombres y la configuración son reales.** Los archivos, funciones, reglas, umbrales, contenedores, puertos y volúmenes salen del repositorio.
-- **Las salidas de consola son reales.** Las de la pestaña CLI y las del evento "Primera corrida" son corridas del proyecto.
-- **Los paquetes de ejemplo son inventados**, con valores elegidos para mostrar cada regla. La fecha de referencia de la demo está fija en 2026-10-19 15:00 UTC.
+- **Las salidas de consola son reales.** Las de la pestaña CLI y las del evento "Primera corrida" son de la corrida de la POC del 20/10/2026 (lote `ece83881…`, ver `docs/poc/EVIDENCIA_POC.md`).
+- **Los paquetes de ejemplo:** los de LIT-05 y LIT-02 son registros reales de la corrida de la POC; los demás son inventados, con valores elegidos para mostrar cada regla. La fecha de referencia de la demo está fija en 2026-10-20 23:07 UTC, el momento de la corrida de la POC.
 - **La página no se conecta a la base ni a Docker.** Es una simulación didáctica: no muestra datos en vivo.
 - **El simulador del proyecto genera una lectura por campo** (8 × 96 = 768 por día), no una por sensor. El cliente tiene 200 sensores y 19.200 registros por día. La página lo aclara en el bloque "Sensores IoT".
