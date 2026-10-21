@@ -1,0 +1,14 @@
+# Fecha de la corrida: 2026-10-20 23:06:52 UTC
+$ docker compose run --rm -e APP_ENV=staging -e STORAGE_PATH=/app/storage/poc pipeline sh -c 'DATABASE_URL="postgresql+psycopg://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/agro_poc" python -m src.main'
+[PIPELINE] Entorno: STAGING · base agro_poc · lake /app/storage/poc
+[BRONZE] 576 registros -> /app/storage/poc/bronze/agro/open_meteo/year=2026/month=10/batch_ece83881-91dc-4356-b6cf-eb7ddfa7f759.parquet
+[STATE] Watermark agro.open_meteo = 2026-10-15T23:00:00+00:00
+[BRONZE] 767 registros -> /app/storage/poc/bronze/agro/iot_simulator/year=2026/month=10/batch_ece83881-91dc-4356-b6cf-eb7ddfa7f759.parquet
+[STATE] Watermark agro.iot_simulator = 2026-10-20T23:00:00+00:00
+[SILVER] 1246 registros -> /app/storage/poc/silver/agro/measurements/year=2026/month=10/clean_ece83881-91dc-4356-b6cf-eb7ddfa7f759.parquet
+[QUARANTINE] 97 registros -> /app/storage/poc/quarantine/agro/measurements/year=2026/month=10/rejected_ece83881-91dc-4356-b6cf-eb7ddfa7f759.parquet
+[DQ] total=1343 valid=1193 warning=53 invalid=97 score=88.83% utilizable=92.78% errores=326
+[DB] Upsert de 8 filas en gold.fields.
+[DB] Upsert de 48 filas en gold.daily_field_metrics.
+[PIPELINE] Lote ece83881-91dc-4356-b6cf-eb7ddfa7f759 procesado.
+[PIPELINE] Duración: 9.9s (objetivo RNF08: < 300s)

@@ -1,0 +1,6 @@
+NAME                                   IMAGE                        STATUS                        PORTS
+ingsoftwareetl-1-grafana-1             grafana/grafana-oss:11.4.0   Up About a minute             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+ingsoftwareetl-1-postgres-1            postgres:16                  Up About a minute (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+ingsoftwareetl-1-scheduler-dev-1       agro-pipeline:local          Up 16 seconds                 
+ingsoftwareetl-1-scheduler-prod-1      agro-pipeline:local          Up 16 seconds                 
+ingsoftwareetl-1-scheduler-staging-1   agro-pipeline:local          Up 16 seconds                 

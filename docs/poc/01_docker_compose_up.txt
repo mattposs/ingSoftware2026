@@ -1,0 +1,6 @@
+ Container ingsoftwareetl-1-postgres-1  Healthy
+ Container ingsoftwareetl-1-postgres-1  Healthy
+ Container ingsoftwareetl-1-scheduler-staging-1  Starting
+ Container ingsoftwareetl-1-scheduler-dev-1  Started
+ Container ingsoftwareetl-1-scheduler-staging-1  Started
+ Container ingsoftwareetl-1-scheduler-prod-1  Started
