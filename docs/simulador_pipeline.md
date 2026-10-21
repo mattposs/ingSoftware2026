@@ -27,7 +27,30 @@ Para leerlo:
 
 ## Los tres modos
 
-### 1 · Viaje de un registro
+Al abrir la página arranca en el modo 1 (Docker Compose).
+
+### 1 · Docker Compose paso a paso
+
+Todo arranca apagado. En 12 eventos se ve qué hace `docker compose up -d --build`, en el orden real:
+
+1. Lee `docker-compose.yml` y las variables de `.env.example` / `.env`.
+2. Construye la imagen `agro-pipeline` con el `Dockerfile`.
+3. Descarga `postgres:16` y `grafana/grafana-oss:11.4.0`.
+4. Crea la red interna y los volúmenes (`pgdata`, `grafana-data`).
+5. Arranca `postgres`, que ejecuta los scripts de `sql/` solo la primera vez.
+6. Espera el **healthcheck** (`pg_isready`).
+7. Arranca los tres schedulers: dev, staging y prod.
+8. Arranca Grafana y publica el puerto 3000.
+9. Hace la primera corrida.
+10. Muestra el `docker compose ps`.
+11. Explica por qué hay que reconstruir la imagen si cambia `config/` o `src/`.
+12. Explica la diferencia entre `stop`, `down` y `down -v`.
+
+### 2 · Proyecto completo
+
+Git, configuración versionada, CI (ruff, tests, cobertura), publicación de imágenes por rama, flujo de Pull Requests, catálogo de datos y verificación final.
+
+### 3 · Viaje de un registro
 
 Se elige un **paquete** (una lectura de un sensor) y se sigue en 15 eventos:
 
@@ -54,27 +77,6 @@ Paquetes de ejemplo:
 
 Con **＋ Crear paquete propio** los alumnos cambian los valores y ven qué regla lo frena.
 
-### 2 · Docker Compose paso a paso
-
-Todo arranca apagado. En 12 eventos se ve qué hace `docker compose up -d --build`, en el orden real:
-
-1. Lee `docker-compose.yml` y las variables de `.env.example` / `.env`.
-2. Construye la imagen `agro-pipeline` con el `Dockerfile`.
-3. Descarga `postgres:16` y `grafana/grafana-oss:11.4.0`.
-4. Crea la red interna y los volúmenes (`pgdata`, `grafana-data`).
-5. Arranca `postgres`, que ejecuta los scripts de `sql/` solo la primera vez.
-6. Espera el **healthcheck** (`pg_isready`).
-7. Arranca los tres schedulers: dev, staging y prod.
-8. Arranca Grafana y publica el puerto 3000.
-9. Hace la primera corrida.
-10. Muestra el `docker compose ps`.
-11. Explica por qué hay que reconstruir la imagen si cambia `config/` o `src/`.
-12. Explica la diferencia entre `stop`, `down` y `down -v`.
-
-### 3 · Proyecto completo
-
-Git, configuración versionada, CI (ruff, tests, cobertura), publicación de imágenes por rama, flujo de Pull Requests, catálogo de datos y verificación final.
-
 ## Controles
 
 | Control | Qué hace |
@@ -99,10 +101,10 @@ En el panel **Información del evento** se ve, para cada paso:
 ## Recorrido sugerido para una clase (unos 20 minutos)
 
 1. **Orientación (3 min).** Mostrar las franjas: origen, procesamiento, almacenamiento. Remarcar que el código no guarda nada por sí mismo: escribe en una capa.
-2. **Camino feliz (5 min).** Modo 1 con el paquete "Lectura válida", avanzando de a un evento. Detenerse en Bronze (linaje, inmutable) y en Gold (upsert).
+2. **Camino feliz (5 min).** Modo 3 con el paquete "Lectura válida", avanzando de a un evento. Detenerse en Bronze (linaje, inmutable) y en Gold (upsert).
 3. **Un rechazo (4 min).** Repetir con "Humedad 135 %". Ver la tabla de reglas en la tanda 2 y el desvío a Quarantine. Preguntar por qué las otras cuatro variables, que estaban bien, tampoco llegan a Gold.
 4. **Que los alumnos prueben (3 min).** "Crear paquete propio" con una temperatura de 50 °C, una unidad °F o un campo inexistente.
-5. **Docker (5 min).** Modo 2. Detenerse en el healthcheck (por qué los schedulers esperan) y en el evento 11 (por qué hay que reconstruir la imagen). Abrir "docker-compose.yml explicado".
+5. **Docker (5 min).** Modo 1. Detenerse en el healthcheck (por qué los schedulers esperan) y en el evento 11 (por qué hay que reconstruir la imagen). Abrir "docker-compose.yml explicado".
 
 ## Qué es simulado y qué es real
 
