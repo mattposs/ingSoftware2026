@@ -6,8 +6,9 @@
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED)
 
 > Prueba de concepto (POC) del Proyecto Grupal de Ingeniería de Software – UADE (2026).
-> Consultora: **UnaCocuCha SRL** · Cliente (ficticio): **Grupo Agro del Litoral S.A.**
+> Consultora: **Datum Sur** · Cliente (ficticio): **Grupo Agro del Litoral S.A.**
 > Documento de proyecto: [`docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf`](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf)
+> Evidencia de la POC: [`docs/poc/EVIDENCIA_POC.md`](docs/poc/EVIDENCIA_POC.md) · Simulador para clase: [`docs/simulador_pipeline.html`](docs/simulador_pipeline.html)
 
 ## Tabla de contenidos
 
@@ -15,7 +16,10 @@
 - [Objetivos](#objetivos)
 - [Alcance](#alcance)
 - [Arquitectura](#arquitectura)
+- [Modelo de datos](#modelo-de-datos)
 - [Reglas de Data Quality](#reglas-de-data-quality)
+- [Prueba de concepto (POC)](#prueba-de-concepto-poc)
+- [Simulador interactivo](#simulador-interactivo)
 - [Stack tecnológico](#stack-tecnológico)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Instalación y ejecución](#instalación-y-ejecución)
@@ -46,11 +50,11 @@ Nuestro equipo actúa como consultora de Data Engineering y DataOps. El encargo 
 |---|---|
 | 100% de los datos en Bronze con origen y fecha de ingesta | Columnas de linaje `_batch_id`, `_ingested_at`, `_source_system` |
 | Las 12 reglas detectan ≥ 95% de los errores inyectados | `tests/test_pipeline_units.py::test_reglas_detectan_al_menos_95_por_ciento_de_errores_inyectados` |
-| 100% de rechazos en quarantine con motivo; Gold sin inválidos | `_rejection_reasons` en quarantine; `test_gold_no_contiene_registros_invalidos` |
+| 100% de rechazos en quarantine con motivo; Gold sin inválidos | `_rejection_reasons` en quarantine; `test_gold_no_contiene_registros_invalidos` (unitario) y `test_gold_no_tiene_registros_invalidos` (integración) |
 | ≥ 12 tests de reglas y ≥ 80% de cobertura en validación | `tests/test_rules.py`; el CI falla si la cobertura de `src/validation` baja de 80% |
 | 100% de los cambios a `main` pasan por GitHub Actions | `.github/workflows/ci.yml` + *branch protection* (ver [CI/CD](#cicd)) |
 | DQ Score por campo y día; dashboard solo sobre Gold | `gold.daily_field_metrics.porcentaje_calidad` (estricto), `gold.dq_run_metrics.dq_score` (estricto) y `pct_utilizable`, usuario `dashboard` de solo lectura |
-| Corrida de un día de datos en < 5 minutos | El pipeline informa la duración al terminar (≈ 20 s en local) |
+| Corrida de un día de datos en < 5 minutos | El pipeline informa la duración al terminar: 9,9 s en la corrida de la POC ([`docs/poc/03_corrida_pipeline.txt`](docs/poc/03_corrida_pipeline.txt)) |
 
 ## Alcance
 
@@ -77,11 +81,14 @@ flowchart TD
         E[(gold.daily_field_metrics)]
         M[(gold.dq_run_metrics)]
         R[(gold.dq_errors)]
+        T[(gold.etl_trace ·<br/>pipeline_layer_metrics)]
     end
     D -->|recálculo de días afectados<br/>+ upsert idempotente| E
     F -->|motivos| R
-    E --> G[Dashboard<br/>Grafana / Power BI]
+    E --> G[Dashboards<br/>Grafana]
     M --> G
+    R --> G
+    T --> G
 ```
 
 | Capa | Dónde | Contenido |
@@ -89,13 +96,21 @@ flowchart TD
 | **Bronze** | `storage/bronze/agro/{fuente}/…/batch_{id}.parquet` | Datos tal como llegaron: `timestamp` (texto crudo), `field_id`, coordenadas, las 5 variables con su unidad, `source` y linaje. Nunca se modifica. |
 | **Silver** | `storage/silver/agro/measurements/…/clean_{id}.parquet` | Registros tipados (timestamp UTC) clasificados `VALID` o `WARNING`, con `_dq_warnings`. |
 | **Quarantine** | `storage/quarantine/agro/measurements/…/rejected_{id}.parquet` | Registros `INVALID` sin modificar, con `_rejection_reasons` (ej. `DQ05;DQ07`). |
-| **Gold** | PostgreSQL, esquema `gold` | Indicadores diarios por campo y fuente, métricas de cada corrida y registro de errores. |
+| **Gold** | PostgreSQL, esquema `gold` | Indicadores diarios por campo y fuente, métricas de cada corrida, registro de errores, métricas por capa y trazas de registros de muestra. |
 
-**Incremental:** cada corrida trae solo la ventana `(watermark, ahora]` de cada fuente. Gold recalcula con todo Silver los días y campos afectados, así que un día que llega en varios lotes queda correcto.
+Los lakes están separados por entorno (`storage/dev/`, `storage/staging/`, `storage/prod/`) y Gold vive en una base por entorno (`agro_dev`, `agro_staging`, `agro_prod`).
+
+**Incremental:** cada corrida trae solo la ventana `(watermark, ahora]` de cada fuente. Hoy el watermark (`etl.watermarks`) se actualiza al terminar Bronze; si una etapa posterior falla, el lote queda en Bronze y se recupera con `--reprocess`. Gold recalcula con todo Silver los días y campos afectados, así que un día que llega en varios lotes queda correcto.
 
 **Reproceso:** si cambia una regla, `python -m src.main --reprocess <batch_id>` regenera Silver, Quarantine y Gold desde Bronze, sin volver a llamar a la API.
 
 **Data Quality Score (estricto)** = VALID / total × 100; **% utilizable** = (VALID + WARNING) / total × 100. Las decisiones de diseño están en [`docs/decisiones.md`](docs/decisiones.md).
+
+## Modelo de datos
+
+![Diagrama de base de datos](<docs/Diagrama de base de datos.png>)
+
+Ocho tablas en dos esquemas: `etl.watermarks` (control de la extracción) y, en `gold`, `fields` (los 8 campos LIT-01 a LIT-08), `daily_field_metrics`, `dq_run_metrics`, `dq_errors`, `pipeline_layer_metrics`, `etl_trace` y `etl_trace_steps`. El script está en [`sql/schema/01_schema.sql`](sql/schema/01_schema.sql). El diagrama en Mermaid, con la explicación de cada tabla y relación, está en [`docs/modelo_datos.md`](docs/modelo_datos.md) (versión vectorial: [`docs/modelo_datos.svg`](docs/modelo_datos.svg)).
 
 ## Reglas de Data Quality
 
@@ -118,6 +133,35 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 
 **Un rechazo en una sola variable invalida el registro completo.** Cada registro trae las cinco variables a la vez. Si una sola incumple una regla de rechazo (por ejemplo, humedad ambiental de 135 %, regla DQ07), el registro entero va a Quarantine con ese motivo: las otras cuatro variables, aunque estén bien, no llegan a Silver ni a Gold. Un WARNING, en cambio, no rechaza: el registro se publica y queda marcado. Ver la decisión D22 en [`docs/decisiones.md`](docs/decisiones.md).
 
+## Prueba de concepto (POC)
+
+Corrida real del pipeline, sin datos inventados: lote `ece83881-91dc-4356-b6cf-eb7ddfa7f759`, 20/10/2026 23:07 UTC, en Docker Compose con la configuración de STAGING, sobre una base y un lake vacíos (`agro_poc`).
+
+| Indicador | Resultado |
+|---|---|
+| Registros ingestados | 1.343: 576 de Open-Meteo (13/10 a 15/10, horarios) y 767 del simulador IoT (cada 15 min, 14,08 % con errores inyectados) |
+| Clasificación | 1.193 VALID · 53 WARNING · 97 INVALID (a Quarantine) |
+| DQ Score estricto | 88,83 % |
+| % utilizable | 92,78 % |
+| Hallazgos | 326 (el más frecuente: DQ11, períodos sin datos, con 215) |
+| Duración | 9,9 s (objetivo < 300 s) |
+| Tests | 93 passed · cobertura de `src/validation` 92 % |
+
+Casos seguidos de punta a punta: **LIT-05** con humedad de suelo 1,35 m³/m³ (rechazo DQ10) y **LIT-02** con una lluvia de 2,6 mm duplicada (rechazo DQ05; Gold no la suma dos veces).
+
+| Archivo | Contenido |
+|---|---|
+| [`docs/poc/EVIDENCIA_POC.md`](docs/poc/EVIDENCIA_POC.md) | Índice de la evidencia, comandos y resultados |
+| [`docs/poc/seccion_11_POC.md`](docs/poc/seccion_11_POC.md) | Sección 11 del documento, redactada con estos datos |
+| [`docs/poc/05_casos_punta_a_punta.md`](docs/poc/05_casos_punta_a_punta.md) | Los casos DQ10 y DQ05, de Bronze a Gold |
+| [`docs/poc/capturas/`](docs/poc/capturas/) | Capturas de Grafana: indicadores de calidad, hallazgos y calidad por campo y día, mapa / lluvia / rechazados y flujo por capa |
+
+## Simulador interactivo
+
+[`docs/simulador_pipeline.html`](docs/simulador_pipeline.html) es una página estilo Cisco Packet Tracer para mostrar en clase cómo funciona todo, paso a paso. Se abre con doble clic, sin instalar nada. Separa en franjas el **origen** de los datos, el **código de procesamiento** y el **almacenamiento** (capas Medallion), y tiene tres modos: el viaje de un registro (incluye los dos casos de la POC), `docker compose up` paso a paso y el proyecto completo (Git, CI/CD, catálogo).
+
+Guía de uso: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md). Para actualizarlo cuando cambia el pipeline: skill [`.agents/skills/simulador-pipeline`](.agents/skills/simulador-pipeline/SKILL.md).
+
 ## Stack tecnológico
 
 
@@ -129,7 +173,8 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 | Data Quality | Motor propio de reglas (`src/validation`) + Pytest |
 | CI/CD | GitHub Actions |
 | Contenedores | Docker · Docker Compose |
-| Dashboard | Grafana / Power BI (solo lectura sobre `gold`) |
+| Dashboard | Grafana 11.4 (3 dashboards provisionados, solo lectura sobre `gold`) |
+| Registro de imágenes | GitHub Container Registry (`ghcr.io`) |
 | Gestión | ClickUp (Kanban) · GitHub |
 | Orquestación | Apache Airflow *(opcional, no incluido en la POC)* |
 
@@ -137,8 +182,10 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 
 ```
 .
-├── .agents/skills/            # Skills del agente: de-developer y data-governance
-├── .github/workflows/ci.yml   # Lint + validación de reglas + tests + build Docker
+├── .agents/skills/            # Skills del agente: de-developer, data-governance y simulador-pipeline
+├── .github/workflows/
+│   ├── ci.yml                 # Lint + validación de reglas + tests + build Docker
+│   └── deploy.yml             # Imagen por entorno en GHCR (push a dev / staging / main)
 ├── catalog/                   # Catálogo de datasets en YAML (skill data-governance)
 ├── config/
 │   ├── rules.yaml             # Reglas DQ01–DQ12 y umbrales
@@ -146,10 +193,14 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 │   ├── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas (base de todos los entornos)
 │   └── environments/          # dev.yaml, staging.yaml, prod.yaml: lo que cambia en cada entorno
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
-├── grafana/                   # Dashboard provisionado (fuente de datos + calidad-datos.json)
+├── grafana/                   # Fuentes de datos y 3 dashboards provisionados (calidad, flujo, paso a paso)
 ├── docs/
 │   ├── TPO_Pipeline_DataOps_Documento_Final_v7.{docx,pdf}
 │   ├── arquitectura.excalidraw
+│   ├── modelo_datos.md / .svg # Modelo de datos (Mermaid) + "Diagrama de base de datos.png"
+│   ├── simulador_pipeline.html / .md  # Simulador interactivo para clase y su guía
+│   ├── poc/                   # Evidencia de la POC, sección 11 y capturas de Grafana
+│   ├── revision/              # Pasos 1 a 6 de la adaptación y comparación con la entrega final
 │   ├── data_dictionary/       # Diccionario de datos por capa (generado)
 │   ├── decisiones.md          # Registro de decisiones técnicas
 │   ├── cambios_documento_v7.md
@@ -167,7 +218,7 @@ Los umbrales están en [`config/rules.yaml`](config/rules.yaml), versionados en 
 │   ├── metrics/               # DQ Score, dq_run_metrics y dq_errors
 │   └── governance/            # Catalogación de datasets
 ├── storage/                   # Lake Parquet generado (ignorado por Git)
-├── tests/                     # Pytest: reglas, pipeline e integración con PostgreSQL
+├── tests/                     # Pytest: reglas, pipeline, dashboards, entornos e integración con PostgreSQL
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt / requirements-dev.txt
@@ -302,7 +353,12 @@ TEST_DATABASE_URL=postgresql+psycopg://pipeline:<pass>@localhost:5432/agro_dev p
 
 - `tests/test_rules.py`: al menos un test por regla DQ01–DQ12, con los bordes de cada rango.
 - `tests/test_pipeline_units.py`: simulador (detección ≥ 95%), lake append-only, Gold recalculado, DQ Score, upsert.
-- `tests/test_integration_db.py`: corrida completa contra PostgreSQL, idempotencia del reproceso y Gold sin inválidos.
+- `tests/test_dashboard.py`: los dashboards provisionados son válidos y leen solo `gold`.
+- `tests/test_entornos_trazas.py`: configuración de dev / staging / prod y trazas del ETL paso a paso.
+- `tests/test_ingestion_governance.py`: conector Open-Meteo (con la API simulada), chequeo de `rules.yaml` y catalogación.
+- `tests/test_integration_db.py`: corrida completa contra PostgreSQL, idempotencia del reproceso, Gold sin inválidos (rangos, campos existentes, claves únicas, mismos conteos que Silver), lluvia duplicada que no se suma y lote con solo rechazados.
+
+Resultado actual: **93 passed**, cobertura de `src/validation` 92 % ([`docs/poc/06b_pytest_y_cobertura.txt`](docs/poc/06b_pytest_y_cobertura.txt)).
 
 ## CI/CD
 
@@ -313,6 +369,8 @@ Cada push a `main` y cada pull request ejecutan [`.github/workflows/ci.yml`](.gi
 3. Validación de `config/rules.yaml` y de las notebooks
 4. Tests con PostgreSQL de servicio, más cobertura mínima de 80% en `src/validation`
 5. Build de la imagen Docker
+
+Además, cada push a `dev`, `staging` o `main` ejecuta [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), que publica la imagen del entorno en GHCR (`:dev`, `:staging`, `:prod`); ver [Entornos](#entornos-dev-staging-y-prod).
 
 **Pendiente (configuración en GitHub):** activar *branch protection* en `main` (Settings → Branches), con PR obligatorio, una aprobación y los checks `lint` y `test` en verde. Sin eso no se cumple la meta "100% de los cambios pasan por CI".
 
@@ -348,7 +406,11 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 
 - Documento de proyecto v7: [PDF](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf) · [DOCX](docs/TPO_Pipeline_DataOps_Documento_Final_v7.docx)
 - Cambios sugeridos para la v8: [`docs/cambios_documento_v7.md`](docs/cambios_documento_v7.md)
+- Comparación con la entrega final y pasos de la adaptación: [`docs/revision/`](docs/revision/)
+- Decisiones técnicas (D1–D22): [`docs/decisiones.md`](docs/decisiones.md)
 - Diagrama de arquitectura: [`docs/arquitectura.excalidraw`](docs/arquitectura.excalidraw)
+- Modelo de datos: [`docs/modelo_datos.md`](docs/modelo_datos.md) · [imagen](<docs/Diagrama de base de datos.png>)
+- Evidencia de la POC y sección 11: [`docs/poc/`](docs/poc/)
 - Simulador interactivo del pipeline (para clase): [`docs/simulador_pipeline.html`](docs/simulador_pipeline.html) · guía: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md) · skill para actualizarlo: [`.agents/skills/simulador-pipeline`](.agents/skills/simulador-pipeline/SKILL.md)
 - Presentación final: <!-- TODO: link -->
 - Demo / video: <!-- TODO: link -->
