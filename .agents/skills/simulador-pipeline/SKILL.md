@@ -38,8 +38,8 @@ Todo vive en dos `<script>`:
    - `FIELD_IDS`, `REF_NOW`, `RULE_NAMES`.
    - `evalRules(r)` evalúa DQ01–DQ12 sobre un registro con los umbrales de `config/rules.yaml`. `classify(rules)` devuelve VALID, WARNING o INVALID.
    - `goldImpact(status)` es el ejemplo del % de calidad diario estricto.
-   - `buildRun(pdu)` arma los eventos del modo 1. Hay 15 y se ramifican según el veredicto: Silver o Quarantine.
-   - `DOCKER_STEPS` tiene los eventos del modo 2 (`docker compose up -d --build`, en el orden real). `PROJECT_STEPS` tiene los del modo 3 (Git, CI/CD, catálogo).
+   - `buildRun(pdu)` arma los eventos del modo 3 (viaje de un registro). Hay 15 y se ramifican según el veredicto: Silver o Quarantine.
+   - `DOCKER_STEPS` tiene los eventos del modo 1 (`docker compose up -d --build`, en el orden real). `PROJECT_STEPS` tiene los del modo 2 (Git, CI/CD, catálogo).
    - Al final exporta con `module.exports` cuando corre en Node.
 2. **`<script id="app">` es la interfaz:**
    - `PDUS` son los paquetes de ejemplo.
@@ -54,9 +54,9 @@ Cada evento (paso) tiene esta forma:
 ```js
 {from:"extract", to:"bronze", type:"Escritura", status:"OK|WARNING|REJECT",
  title:"...", text:"qué pasa", docker:"nota HTML opcional", file:"archivo real",
- code:"fragmento", record:"raw|bronze|final|silver|quarantine",   // solo modo 1
+ code:"fragmento", record:"raw|bronze|final|silver|quarantine",   // solo modo 3
  rules:[...],                                                      // solo tandas de validación
- on:["id", ...], frames:{postgres:"starting|healthy|running"}}     // solo modos 2 y 3
+ on:["id", ...], frames:{postgres:"starting|healthy|running"}}     // solo modos 1 y 2
 ```
 
 ## Cómo actualizarlo cuando cambia el pipeline
@@ -68,7 +68,7 @@ Cada evento (paso) tiene esta forma:
    - **Contenedores, puertos o volúmenes:** `CONTAINERS`, `YML_ANN`, `DOCKER_STEPS` y el panel `dockerPanel`.
    - **Salidas reales de consola** (pestaña CLI y eventos "Primera corrida"): pegá logs de una corrida real, no inventados.
 3. **Si agregás un bloque:** elegí su franja según el rol, no según el contenedor. Usá una separación de ≥ 200 px entre centros en la misma fila. La caja mide 150 × 128 y las franjas tienen la altura justa para una fila (la de almacenamiento tiene dos). Si un enlace cruza otro bloque, usá `via`. Si su etiqueta choca, usá `lp`. Las etiquetas de los enlaces entre franjas van en el hueco debajo de la fila de código (y ≈ 399).
-4. **Mantené los tres modos** y que cada evento de los modos 2 y 3 encienda (`on`) lo que corresponde.
+4. **Mantené los tres modos, en este orden de pestañas:** 1 · Docker Compose (el que se abre por defecto), 2 · Proyecto completo y 3 · Viaje de un registro. Mantené también que cada evento de los modos 1 y 2 encienda (`on`) lo que corresponde.
 
 ## Cómo verificarlo (no lo des por terminado sin esto)
 
