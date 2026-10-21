@@ -38,14 +38,14 @@ function walk(name, tab){
   out.push(`${name}: ${n} eventos · encendidos=${d.querySelectorAll(".dev:not(.off)").length} · contenedores=${[...d.querySelectorAll(".st-pill")].map(x => x.textContent).join(" | ")}`);
 }
 
-walk("modo 1 (viaje)", "#tab-run");
+walk("modo 3 (viaje)", "#tab-run");
 for (const chip of [...d.querySelectorAll(".chip")].filter(c => !c.textContent.includes("Crear"))){
   click(chip); const n = total();
   for (let i = 0; i < n; i++) click($("#bStep"));
   out.push(`  paquete «${chip.textContent.trim()}»: ${n} eventos`);
 }
-walk("modo 2 (Docker Compose)", "#tab-docker");
-walk("modo 3 (proyecto)", "#tab-proj");
+walk("modo 1 (Docker Compose)", "#tab-docker");
+walk("modo 2 (proyecto)", "#tab-proj");
 click($("#tab-run"));
 
 for (const dv of d.querySelectorAll(".dev")){ click(dv); d.querySelectorAll("#dlgTabs .dtab").forEach(click); }
