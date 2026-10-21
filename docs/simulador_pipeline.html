@@ -130,9 +130,9 @@
     <div class="sub">Grupo Agro del Litoral S.A. · 8 campos · 200 sensores · Bronze → Silver / Quarantine → Gold → Grafana</div>
   </div>
   <div class="tabs" role="tablist" aria-label="Modo">
-    <button class="tab" role="tab" id="tab-run" aria-selected="true">1 · Viaje de un registro</button>
-    <button class="tab" role="tab" id="tab-docker" aria-selected="false">2 · Docker Compose paso a paso</button>
-    <button class="tab" role="tab" id="tab-proj" aria-selected="false">3 · Proyecto completo (Git y CI/CD)</button>
+    <button class="tab" role="tab" id="tab-docker" aria-selected="true">1 · Docker Compose paso a paso</button>
+    <button class="tab" role="tab" id="tab-proj" aria-selected="false">2 · Proyecto completo (Git y CI/CD)</button>
+    <button class="tab" role="tab" id="tab-run" aria-selected="false">3 · Viaje de un registro</button>
   </div>
 </header>
 
@@ -769,7 +769,7 @@ function reset(){
   $("#detail").innerHTML = '<p class="hint">' + (mode === "run"
     ? "Paquete elegido: <b>" + curPdu.name + "</b>. Apretá <b>Capturar / Avanzar</b> para seguirlo, o <b>Auto</b> para verlo correr solo. Cómo leer el diagrama: arriba el <b>origen</b> de los datos, en el medio el <b>código</b> que los procesa y abajo el <b>almacenamiento</b> donde quedan (Bronze → Silver → Gold, y Quarantine para los rechazados). Cada flecha dice si el código <b>lee</b> o <b>escribe</b>. Clic en un bloque para abrirlo; el panel <b>Contenedores Docker</b> (arriba a la derecha) muestra dónde corre cada cosa."
     : mode === "docker"
-      ? "Apretá <b>Capturar / Avanzar</b>. Vas a ver, en orden, qué hace Docker Compose: construir la imagen, crear la red y los volúmenes, arrancar PostgreSQL, esperar su healthcheck y recién entonces arrancar los schedulers y Grafana."
+      ? "Cómo leer el diagrama: arriba el <b>origen</b> de los datos, en el medio el <b>código</b> que los procesa y abajo el <b>almacenamiento</b> donde quedan (Bronze → Silver → Gold, y Quarantine para los rechazados). Abajo de todo, la <b>infraestructura</b>. Apretá <b>Capturar / Avanzar</b>. Vas a ver, en orden, qué hace Docker Compose: construir la imagen, crear la red y los volúmenes, arrancar PostgreSQL, esperar su healthcheck y recién entonces arrancar los schedulers y Grafana."
       : "Apretá <b>Capturar / Avanzar</b> para recorrer el proyecto de punta a punta.") + "</p>";
 }
 
@@ -983,7 +983,7 @@ window.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") $("#bBack").click();
 });
 
-setMode("run");
+setMode("docker");
 </script>
 </body>
 </html>
