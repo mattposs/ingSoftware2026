@@ -1,0 +1,96 @@
+# docker compose up -d   -> base de datos + pipeline programado en DEV, STAGING y PROD + dashboards
+# Dashboards: http://localhost:3000 (selector "Entorno" arriba a la izquierda)
+
+# Variables: .env.example da los valores por defecto y .env (opcional, ignorado por Git) los pisa.
+x-env-file: &env_file
+  - path: .env.example
+  - path: .env
+    required: false
+
+# Plantilla común de los schedulers: misma imagen, distinto entorno (APP_ENV).
+x-scheduler: &scheduler
+  build: .
+  command: ["python", "-m", "src.scheduler"]
+  env_file: *env_file
+  volumes:
+    - ./storage:/app/storage          # cada entorno usa storage/<entorno>/
+  depends_on:
+    postgres:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16
+    env_file: *env_file
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro   # crea agro_dev, agro_staging y agro_prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Ejecución programada (EDT 7.3), un scheduler por entorno.
+  # La imagen de cada entorno se puede apuntar a la publicada por deploy.yml (ramas dev/staging/main), ej.:
+  #   PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod
+  scheduler-dev:
+    <<: *scheduler
+    image: ${DEV_IMAGE:-agro-pipeline:local}
+    environment: {APP_ENV: dev, POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}
+
+  scheduler-staging:
+    <<: *scheduler
+    image: ${STAGING_IMAGE:-agro-pipeline:local}
+    environment: {APP_ENV: staging, POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}
+
+  scheduler-prod:
+    <<: *scheduler
+    image: ${PROD_IMAGE:-agro-pipeline:local}
+    environment: {APP_ENV: prod, POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}
+
+  # Dashboards (EDT 8.1): leen solo gold.* con el usuario de solo lectura.
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    env_file: *env_file
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-cambiar-esto-tambien}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"          # ver los dashboards sin login (solo lectura)
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: dark
+      GF_USERS_DEFAULT_LANGUAGE: es-ES
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/calidad-datos.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Corrida manual: docker compose run --rm -e APP_ENV=staging pipeline
+  pipeline:
+    build: .
+    image: agro-pipeline:local
+    env_file: *env_file
+    environment: {POSTGRES_HOST: postgres, POSTGRES_PORT: 5432}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["run"]
+
+volumes:
+  pgdata:
+  grafana-data:
