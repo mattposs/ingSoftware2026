@@ -1,0 +1,66 @@
+{
+  "entorno": "staging",
+  "medido": {
+    "corridas_total": 90,
+    "corridas_por_dia": {
+      "2026-10-05": 12,
+      "2026-10-06": 9,
+      "2026-10-13": 11,
+      "2026-10-14": 1,
+      "2026-10-19": 41,
+      "2026-10-20": 8,
+      "2026-10-26": 8
+    },
+    "corridas_con_monitoreo": 7,
+    "exitosas": 4,
+    "fallidas": 3,
+    "desde": "2026-10-26 23:00:20.180892+00:00",
+    "frescura_p95": 6.14,
+    "frescura_max": 6.8,
+    "frescura_n": 4,
+    "duracion_p95": 36.39,
+    "duracion_max": 38.36,
+    "duracion_n": 4,
+    "bronze_archivos": 94,
+    "bronze_filas": 10692,
+    "bronze_linaje_nulo": 0,
+    "silver_filas": 10007,
+    "silver_invalid": 0,
+    "gold_filas": 289,
+    "gold_no_cuadra_con_silver": 0
+  },
+  "volumen": {
+    "sensores": 200,
+    "registros_bronze": 19355,
+    "lecturas_esperadas": 19200,
+    "reproceso_s": 7.65,
+    "segundo_reproceso_s": 5.14,
+    "run": {
+      "total": 19355.0,
+      "valid": 15455.0,
+      "warning": 1588.0,
+      "invalid": 2312.0,
+      "dq_score": 79.85
+    },
+    "gold_filas_antes": 508,
+    "gold_filas_despues": 508,
+    "gold_identico": true,
+    "claves_duplicadas": 0
+  },
+  "rnf06": {
+    "antes": {
+      "umbral_warning_max": 45,
+      "registros": 768,
+      "temperatura_max": 26.99,
+      "warnings_dq09": 0
+    },
+    "despues": {
+      "umbral_warning_max": 25,
+      "registros": 768,
+      "temperatura_max": 26.99,
+      "warnings_dq09": 44
+    },
+    "restaurado": true
+  },
+  "errores": {}
+}

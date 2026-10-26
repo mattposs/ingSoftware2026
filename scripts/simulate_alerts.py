@@ -147,6 +147,18 @@ def rule_state(alert_id: str) -> dict:
     raise RuntimeError(f"No encontré la regla {alert_id} de {ENV} en Grafana. ¿Está provisionada?")
 
 
+def first_alerting_after(alert_id: str, after: datetime) -> tuple[datetime, dict] | None:
+    """Primera transición a Alerting después de 'after', según el historial de estados de Grafana."""
+    now = int(time.time())
+    r = requests.get(f"{GRAFANA}/api/v1/rules/history", auth=AUTH, timeout=15,
+                     params={"ruleUID": RULES[alert_id], "from": int(after.timestamp()) - 60, "to": now})
+    r.raise_for_status()
+    t, _, prev, nxt, data = r.json()["data"]["values"]
+    hits = sorted((datetime.fromtimestamp(t[i] / 1e6, UTC), json.loads(data[i])) for i in range(len(t))
+                  if nxt[i] == "Alerting" and prev[i] != "Alerting" and t[i] / 1e6 >= after.timestamp() - 60)
+    return hits[0] if hits else None
+
+
 def wait_firing(alert_id: str, after: datetime, timeout_min: float) -> dict:
     deadline = time.monotonic() + timeout_min * 60
     while time.monotonic() < deadline:
@@ -182,7 +194,7 @@ def wait_mail(alert_id: str, after: datetime, timeout_min: float = 4) -> dict | 
 
 # --- Capturas ------------------------------------------------------------------------------------
 
-def screenshots(alert_id: str, escenario: str, mail: dict | None) -> list[dict]:
+def screenshots(alert_id: str, escenario: str, mail: dict | None, solo: set[str] | None = None) -> list[dict]:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -201,6 +213,8 @@ def screenshots(alert_id: str, escenario: str, mail: dict | None) -> list[dict]:
     if mail:
         pages.append((f"{alert_id}_notificacion_mailpit.png", "Notificación recibida en Mailpit",
                       f"{MAILPIT}/view/{mail['id']}", None))
+    if solo:
+        pages = [pg for pg in pages if pg[0] in solo]
     with sync_playwright() as p:
         try:
             browser = p.chromium.launch(headless=True)
@@ -217,7 +231,8 @@ def screenshots(alert_id: str, escenario: str, mail: dict | None) -> list[dict]:
             page.goto(url, wait_until="networkidle", timeout=60000)
             page.wait_for_timeout(4000)
             if mode == "lista":   # despliega el grupo de STAGING para que se vea la regla en Firing
-                page.get_by_text(f"Pipeline {ENV.upper()}", exact=True).first.click()
+                group = page.locator('[data-testid="rule-group"]').filter(has_text=f"Pipeline {ENV.upper()}")
+                group.locator('[data-testid="data-testid group-collapse-toggle"]').first.click()
                 page.wait_for_timeout(2500)
             stamp = datetime.now(UTC)
             # Franja con la hora de la captura, para que se vea en pantalla.
@@ -323,10 +338,55 @@ def escenario_c(timeout_min: float) -> dict:
             "capturas": screenshots("AL01", "C", mail)}
 
 
+def recuperar(escenario: str, batch_id: str) -> dict:
+    """
+    Rearma el resultado de un escenario ya ejecutado a partir de las fuentes reales: la corrida en
+    gold.dq_run_metrics, la transición a Alerting en el historial de Grafana y el correo en Mailpit.
+    Rehace solo la captura de la lista de alertas, que tiene que mostrar la regla todavía en Firing.
+    """
+    alerta = "AL02" if escenario == "B" else "AL01"
+    with db().connect() as conn:
+        run = conn.execute(text("SELECT * FROM gold.dq_run_metrics WHERE _batch_id = :b"), {"b": batch_id}).mappings().one()
+    falla = run["finished_at"]
+    hit = first_alerting_after(alerta, falla)
+    if not hit:
+        raise RuntimeError(f"No hay una transición de {alerta} a Alerting después de la corrida {batch_id}.")
+    disparo, valores = hit
+    if rule_state(alerta)["state"] != "firing":
+        raise RuntimeError(f"{alerta} ya no está en Firing: no se puede rehacer la captura de la lista.")
+    mail = wait_mail(alerta, disparo, timeout_min=0.2)
+    previas = [{"archivo": f"{alerta}_{n}.png", "que_muestra": d, "escenario": escenario,
+                "tomada": iso(datetime.fromtimestamp((OUT / f"{alerta}_{n}.png").stat().st_mtime, UTC))}
+               for n, d in (("detalle_regla", "Detalle de la regla"),
+                            ("panel_salud", "Panel de salud del pipeline (dashboard de calidad, STAGING)"),
+                            ("notificacion_mailpit", "Notificación recibida en Mailpit"))
+               if (OUT / f"{alerta}_{n}.png").exists()]
+    nueva = screenshots(alerta, escenario, mail, solo={f"{alerta}_firing.png"})
+    base = {"escenario": escenario, "alerta": alerta, "batch_id": batch_id, "hora_falla": iso(falla),
+            "hora_disparo": iso(disparo), "valores_regla": valores.get("values"),
+            "minutos": round((disparo - falla).total_seconds() / 60, 2),
+            "notificacion": {**mail, "recibido": iso(mail["recibido"])} if mail else None,
+            "capturas": nueva + previas, "recuperado": True}
+    if escenario == "B":
+        base.update({"falla": "Corrida del simulador IoT con 50 % de registros con errores inyectados",
+                     "como": "docker compose run --rm -e APP_ENV=staging -e PIPELINE_IOT_ERROR_RATE=0.5 pipeline "
+                             "python -m src.main --env staging --source iot_simulator",
+                     "dq_score": float(run["dq_score"]), "total": run["total"], "valid": run["valid"],
+                     "warning": run["warning"], "invalid": run["invalid"]})
+    else:
+        base.update({"falla": "Corrida del pipeline con PIPELINE_FORCE_FAILURE=true (falla antes de la extracción)",
+                     "como": "docker compose run --rm -e APP_ENV=staging -e PIPELINE_FORCE_FAILURE=true pipeline"})
+    return base
+
+
 # --- Resumen -------------------------------------------------------------------------------------
 
 def _t(s: str | None) -> str:
     return fmt(datetime.fromisoformat(s)) if s else "—"
+
+
+def _n(x: float) -> str:
+    return f"{x:.2f}".replace(".", ",")
 
 
 def write_summary(results: list[dict], restore_notes: list[str]) -> None:
@@ -335,7 +395,8 @@ def write_summary(results: list[dict], restore_notes: list[str]) -> None:
         "",
         f"Generado por `scripts/simulate_alerts.py` el {fmt(datetime.now(UTC))}, contra el entorno **STAGING**. "
         "Todos los datos salen de la ejecución: la hora de la falla, de `gold.dq_run_metrics`; la hora de disparo "
-        "y el estado, de la API de Grafana (`activeAt` de la instancia en Firing); la notificación, de Mailpit.",
+        "y el estado, de la API de Grafana (`activeAt` de la instancia en Firing o, en un escenario rearmado con "
+        "`--recuperar`, la transición a Alerting del historial de estados); la notificación, de Mailpit.",
         "",
         "## Texto para la sección 11.6",
         "",
@@ -345,7 +406,7 @@ def write_summary(results: list[dict], restore_notes: list[str]) -> None:
             lines += [f"**Escenario {r['escenario']}: no se completó.** {r['error']}", ""]
             continue
         cumple = r["minutos"] <= 30
-        extra = (f" El DQ Score de esa corrida fue de **{r['dq_score']:.2f} %** ({r['valid']} registros VALID de "
+        extra = (f" El DQ Score de esa corrida fue de **{_n(r['dq_score'])} %** ({r['valid']} registros VALID de "
                  f"{r['total']}; {r['warning']} WARNING y {r['invalid']} INVALID)." if r["escenario"] == "B" else "")
         if r["escenario"] == "C":
             cuando = (f"El scheduler se detuvo a las {_t(r['hora_detencion'])}; la última corrida registrada era de las "
@@ -359,7 +420,7 @@ def write_summary(results: list[dict], restore_notes: list[str]) -> None:
         lines += [
             f"**Escenario {r['escenario']} – {r['falla']}.** Se provocó con `{r['como']}`. {cuando}{extra} "
             f"Grafana disparó la alerta **{r['alerta']}** a las {_t(r['hora_disparo'])}, "
-            f"**{r['minutos']:.2f} minutos** después.{mail} "
+            f"**{_n(r['minutos'])} minutos** después.{mail} "
             f"RNF11 (alerta en ≤ 30 minutos): **{'se cumple' if cumple else 'NO se cumple'}**.",
             "",
         ]
@@ -370,14 +431,20 @@ def write_summary(results: list[dict], restore_notes: list[str]) -> None:
         if r.get("error"):
             lines.append(f"| {r['escenario']} | no se completó | — | — | — | — | — | — |")
             continue
-        score = f"{r['dq_score']:.2f} %" if "dq_score" in r else "—"
+        score = f"{_n(r['dq_score'])} %" if "dq_score" in r else "—"
         lines.append(f"| {r['escenario']} | {r['falla']} | {r['alerta']} | {_t(r['hora_falla'])} | "
-                     f"{_t(r['hora_disparo'])} | {r['minutos']:.2f} | {score} | "
+                     f"{_t(r['hora_disparo'])} | {_n(r['minutos'])} | {score} | "
                      f"{'Cumple' if r['minutos'] <= 30 else 'No cumple'} |")
-    lines += ["", "## Capturas", "", "| Archivo | Escenario | Qué muestra |", "|---|---|---|"]
+    notas = [f"- Escenario {r['escenario']}: rearmado con `--recuperar` (no se repitió la falla). La captura de la lista "
+             f"de alertas se tomó después, con {r['alerta']} todavía en Firing desde el disparo original."
+             for r in results if r.get("recuperado")]
+    if notas:
+        lines += ["", "## Notas", "", *notas]
+    lines += ["", "## Capturas", "", "En cada captura se ve, abajo a la derecha, la hora en que se tomó.", "",
+              "| Archivo | Escenario | Qué muestra | Tomada |", "|---|---|---|---|"]
     for r in results:
         for c in r.get("capturas", []):
-            lines.append(f"| [{c['archivo']}]({c['archivo']}) | {c['escenario']} | {c['que_muestra']} |")
+            lines.append(f"| [{c['archivo']}]({c['archivo']}) | {c['escenario']} | {c['que_muestra']} | {_t(c.get('tomada'))} |")
     lines += ["", "## Restauración del entorno", ""] + [f"- {n}" for n in restore_notes]
     lines += ["", "Detalle completo: [`resultados.json`](resultados.json) y la salida de cada corrida "
               "(`<escenario>_salida_pipeline.txt`).", ""]
@@ -391,7 +458,22 @@ def main() -> int:
     parser.add_argument("--escenario", choices=["A", "B", "C"], action="append",
                         help="escenario a correr (se puede repetir). Por defecto: A y B. C es opcional.")
     parser.add_argument("--timeout-min", type=float, default=10, help="espera máxima del disparo (A y B)")
+    parser.add_argument("--recuperar", metavar="ESCENARIO=BATCH_ID",
+                        help="rearma el resultado de un escenario ya corrido (ej. B=<batch_id>) sin repetir la falla")
     args = parser.parse_args()
+    if args.recuperar:
+        OUT.mkdir(parents=True, exist_ok=True)
+        esc, batch = args.recuperar.split("=", 1)
+        res = recuperar(esc.upper(), batch)
+        previos = OUT / "resultados.json"
+        todos = {r["escenario"]: r for r in (json.loads(previos.read_text(encoding="utf-8")) if previos.exists() else [])}
+        todos[res["escenario"]] = res
+        todos = [todos[k] for k in sorted(todos)]
+        previos.write_text(json.dumps(todos, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        write_summary(todos, [f"Escenario {res['escenario']} rearmado con --recuperar a partir de gold.dq_run_metrics, "
+                              "el historial de estados de Grafana y Mailpit; no se repitió la falla."])
+        log(f"Escenario {res['escenario']}: {res['alerta']} a los {res['minutos']:.2f} min (recuperado).")
+        return 0
     escenarios = args.escenario or ["A", "B"]
     if not AUTH[1]:
         sys.exit("Falta GRAFANA_ADMIN_PASSWORD (entorno, .env o .env.example).")
@@ -436,8 +518,12 @@ def main() -> int:
         # Se combinan con los escenarios de corridas anteriores: cada escenario conserva su última ejecución.
         previos = OUT / "resultados.json"
         anteriores = json.loads(previos.read_text(encoding="utf-8")) if previos.exists() else []
-        nuevos = {r["escenario"] for r in results}
-        todos = sorted([r for r in anteriores if r["escenario"] not in nuevos] + results, key=lambda r: r["escenario"])
+        # Un intento fallido no pisa un resultado exitoso anterior del mismo escenario.
+        por_escenario = {r["escenario"]: r for r in anteriores}
+        for r in results:
+            if not r.get("error") or por_escenario.get(r["escenario"], {}).get("error", True):
+                por_escenario[r["escenario"]] = r
+        todos = [por_escenario[k] for k in sorted(por_escenario)]
         previos.write_text(json.dumps(todos, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         write_summary(todos, restore_notes)
         for n in restore_notes:
