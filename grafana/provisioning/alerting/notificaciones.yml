@@ -1,0 +1,23 @@
+# Adónde llegan las alertas: un correo local que se ve en Mailpit (http://localhost:8025).
+# Mailpit es un servidor SMTP de prueba: guarda los correos y no los envía a ningún lado.
+# La dirección de destino sale de ALERT_EMAIL_TO (.env.example / .env); no hay credenciales.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Correo local (Mailpit)
+    receivers:
+      - uid: mailpit-correo
+        type: email
+        settings:
+          addresses: ${ALERT_EMAIL_TO}
+          singleEmail: true
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: Correo local (Mailpit)
+    group_by: [grafana_folder, alertname, entorno]
+    group_wait: 10s        # primera notificación: 10 s después de que la regla pasa a Firing
+    group_interval: 1m
+    repeat_interval: 4h

@@ -56,6 +56,8 @@ services:
   # Dashboards (EDT 8.1): leen solo gold.* con el usuario de solo lectura.
   grafana:
     image: grafana/grafana-oss:11.4.0
+    # Completa los umbrales de las alertas (variables ALERT_*) antes de iniciar Grafana.
+    entrypoint: ["sh", "/etc/grafana/render-alertas.sh"]
     env_file: *env_file
     environment:
       GF_SECURITY_ADMIN_USER: admin
@@ -67,18 +69,37 @@ services:
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/calidad-datos.json
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Alertas AL01 / AL02 (grafana/provisioning/alerting/): avisan por correo a Mailpit.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: mailpit:1025
+      GF_SMTP_FROM_ADDRESS: ${ALERT_EMAIL_FROM:-grafana@datumsur.local}
+      GF_SMTP_FROM_NAME: Alertas del pipeline
+      GF_SMTP_STARTTLS_POLICY: NoStartTLS
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/alerting:/etc/grafana/alerting:ro
+      - ./grafana/render-alertas.sh:/etc/grafana/render-alertas.sh:ro
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+
+  # Correo local para ver las notificaciones de las alertas: http://localhost:8025
+  # Servidor SMTP de prueba: guarda los correos y no los reenvía. Sin credenciales.
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "${MAILPIT_PORT:-8025}:8025"
     restart: unless-stopped
 
   # Corrida manual: docker compose run --rm -e APP_ENV=staging pipeline
+  # Prueba de alertas (solo STAGING): -e PIPELINE_FORCE_FAILURE=true o -e PIPELINE_IOT_ERROR_RATE=0.5
   pipeline:
     build: .
     image: agro-pipeline:local
