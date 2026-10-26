@@ -25,6 +25,7 @@
 - [Instalación y ejecución](#instalación-y-ejecución)
 - [Entornos: dev, staging y prod](#entornos-dev-staging-y-prod)
 - [Dashboards](#dashboards)
+- [Alertas del pipeline](#alertas-del-pipeline)
 - [Tests](#tests)
 - [CI/CD](#cicd)
 - [Catálogo y diccionario de datos](#catálogo-y-diccionario-de-datos)
@@ -173,6 +174,7 @@ Guía de uso: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md). Para a
 | CI/CD | GitHub Actions |
 | Contenedores | Docker · Docker Compose |
 | Dashboard | Grafana 11.4 (3 dashboards provisionados, solo lectura sobre `gold`) |
+| Alertas | Grafana Alerting (reglas como código) + Mailpit (correo local de prueba) |
 | Registro de imágenes | GitHub Container Registry (`ghcr.io`) |
 | Gestión | ClickUp (Kanban) · GitHub |
 | Orquestación | Apache Airflow *(opcional, no incluido en la POC)* |
@@ -192,7 +194,7 @@ Guía de uso: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md). Para a
 │   ├── pipeline.yaml          # Fuentes, ventanas, zona horaria, rutas (base de todos los entornos)
 │   └── environments/          # dev.yaml, staging.yaml, prod.yaml: lo que cambia en cada entorno
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
-├── grafana/                   # Fuentes de datos y 3 dashboards provisionados (calidad, flujo, paso a paso)
+├── grafana/                   # Fuentes de datos, 3 dashboards y alertas (alerting/ + render-alertas.sh)
 ├── docs/
 │   ├── TPO_Pipeline_DataOps_Documento_Final_v7.{docx,pdf}
 │   ├── arquitectura.excalidraw
@@ -204,6 +206,7 @@ Guía de uso: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md). Para a
 │   ├── decisiones.md          # Registro de decisiones técnicas
 │   ├── cambios_documento_v7.md
 │   └── kanban/                # Capturas semanales del tablero
+├── scripts/                   # simulate_alerts.py (evidencia de alertas) y verify_rnf.py (RNF medidos)
 ├── notebooks/                 # Runners delgados por etapa: 01_bronze, 02_silver, 03_gold
 ├── sql/                       # Crea agro_dev / agro_staging / agro_prod, esquema (schema/) y usuarios
 ├── src/
@@ -245,6 +248,7 @@ cd IngSoftwareETL
 # 3. Levantar todo: PostgreSQL + pipeline programado en DEV, STAGING y PROD (cada 15 min) + dashboards
 docker compose up -d
 # Dashboards: http://localhost:3000 (se ven sin login; admin / GRAFANA_ADMIN_PASSWORD para editar)
+# Correos de las alertas: http://localhost:8025 (Mailpit)
 
 # 4. Instalar dependencias en un entorno virtual
 python -m venv .venv
@@ -342,6 +346,22 @@ Los filtros de arriba eligen la **fuente** (Open-Meteo o Simulador IoT) y los **
 
 Colores: un color fijo por campo (paleta validada para daltonismo) y verde / amarillo / rojo solo para estados de calidad, siempre acompañados de un texto o un ícono.
 
+## Alertas del pipeline
+
+Grafana evalúa cada minuto dos reglas, provisionadas como código, para STAGING y PROD. DEV no tiene alertas porque inyecta errores a propósito (decisión D25).
+
+| ID | Alerta | Severidad | Se dispara si… |
+|---|---|---|---|
+| AL01 | Corrida fallida o ausente | crítica | la última corrida terminó `FAILED`, o no hay filas nuevas en `gold.dq_run_metrics` hace más de 30 min (2 ciclos) |
+| AL02 | Caída del DQ Score | alta | el DQ Score estricto de la última corrida es < 80 %, o cae más de 10 puntos contra el promedio de las 24 h anteriores |
+
+- **Notificaciones:** por correo a **Mailpit**, un servidor SMTP local de prueba que guarda los correos sin enviarlos: http://localhost:8025. La dirección sale de `ALERT_EMAIL_TO`.
+- **Umbrales:** `ALERT_AL01_MINUTOS_SIN_CORRIDAS`, `ALERT_AL02_DQ_SCORE_MINIMO` y `ALERT_AL02_CAIDA_MAXIMA_PUNTOS` en `.env.example` (o `.env`). Se aplican con `docker compose up -d grafana`, sin tocar las consultas. Las reglas están en [`grafana/alerting/reglas-pipeline.yml.tmpl`](grafana/alerting/reglas-pipeline.yml.tmpl); [`grafana/render-alertas.sh`](grafana/render-alertas.sh) completa los umbrales al arrancar Grafana.
+- **Panel de salud:** el dashboard de calidad suma la fila *Salud del pipeline*: estado de la última corrida, duración, minutos desde la última corrida, frescura (`finished_at − last_measured_at`) y corridas fallidas en 24 h.
+- **Registro de corridas:** cada corrida guarda `run_status` (SUCCESS / FAILED), `started_at`, `finished_at`, `duration_seconds` y `last_measured_at`, también las que fallan. El pipeline agrega esas columnas al arrancar si la base es anterior (decisiones D23 y D24).
+- **Probarlas (solo STAGING):** `python scripts/simulate_alerts.py` provoca una corrida fallida (AL01) y una caída del score (AL02), toma capturas y escribe [`docs/evidencia_alertas/resumen.md`](docs/evidencia_alertas/resumen.md). `python scripts/verify_rnf.py` mide los RNF con datos reales en [`docs/evidencia_alertas/rnf_medidos.md`](docs/evidencia_alertas/rnf_medidos.md). Las capturas necesitan `pip install -r scripts/requirements-evidencia.txt` y `python -m playwright install chromium`.
+- **Variables solo para pruebas** (apagadas por defecto): `PIPELINE_FORCE_FAILURE=true` hace fallar la corrida y `PIPELINE_IOT_ERROR_RATE=0.5` sube los errores del simulador. El script las pasa solo a un contenedor de un solo uso: `docker compose run --rm -e APP_ENV=staging -e PIPELINE_FORCE_FAILURE=true pipeline`.
+
 ## Tests
 
 ```bash
@@ -355,9 +375,10 @@ TEST_DATABASE_URL=postgresql+psycopg://pipeline:<pass>@localhost:5432/agro_dev p
 - `tests/test_dashboard.py`: los dashboards provisionados son válidos y leen solo `gold`.
 - `tests/test_entornos_trazas.py`: configuración de dev / staging / prod y trazas del ETL paso a paso.
 - `tests/test_ingestion_governance.py`: conector Open-Meteo (con la API simulada), chequeo de `rules.yaml` y catalogación.
+- `tests/test_monitoreo_corridas.py`: migración de las columnas de monitoreo, corrida exitosa y fallida registradas, y `last_measured_at`.
 - `tests/test_integration_db.py`: corrida completa contra PostgreSQL, idempotencia del reproceso, Gold sin inválidos (rangos, campos existentes, claves únicas, mismos conteos que Silver), lluvia duplicada que no se suma y lote con solo rechazados.
 
-Resultado actual: **93 passed**, cobertura de `src/validation` 92 % ([`docs/poc/06b_pytest_y_cobertura.txt`](docs/poc/06b_pytest_y_cobertura.txt)).
+Resultado actual: **103 passed** con PostgreSQL, cobertura de `src/validation` 92 %. (En la POC eran 93: [`docs/poc/06b_pytest_y_cobertura.txt`](docs/poc/06b_pytest_y_cobertura.txt).)
 
 ## CI/CD
 
@@ -406,7 +427,9 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 - Documento de proyecto v7: [PDF](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf) · [DOCX](docs/TPO_Pipeline_DataOps_Documento_Final_v7.docx)
 - Cambios sugeridos para la v8: [`docs/cambios_documento_v7.md`](docs/cambios_documento_v7.md)
 - Comparación con la entrega final y pasos de la adaptación: [`docs/revision/`](docs/revision/)
-- Decisiones técnicas (D1–D22): [`docs/decisiones.md`](docs/decisiones.md)
+- Decisiones técnicas (D1–D27): [`docs/decisiones.md`](docs/decisiones.md)
+- Diagramas para el documento (arquitectura, Medallion y base de datos, en Mermaid): [`docs/diagramas.md`](docs/diagramas.md)
+- Evidencia de alertas y RNF medidos: [`docs/evidencia_alertas/`](docs/evidencia_alertas/)
 - Diagrama de arquitectura: [`docs/arquitectura.excalidraw`](docs/arquitectura.excalidraw)
 - Modelo de datos: [`docs/modelo_datos.md`](docs/modelo_datos.md) · [imagen](<docs/Diagrama de base de datos.png>)
 - Evidencia de la POC y sección 11: [`docs/poc/`](docs/poc/)
