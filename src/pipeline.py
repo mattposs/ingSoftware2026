@@ -6,8 +6,10 @@ para poder correrlas juntas (src.main) o por separado (notebooks/, reprocesos).
   run_bronze  -> extrae la ventana incremental de cada fuente y la guarda en Bronze.
   run_silver  -> tipa, deduplica y valida DQ01–DQ12; escribe Silver / Quarantine y dq_errors.
   run_gold    -> recalcula los indicadores diarios afectados y hace upsert en PostgreSQL.
+  run_all     -> las tres etapas, registrando la corrida (SUCCESS o FAILED) en gold.dq_run_metrics.
 """
 
+import os
 from datetime import UTC, datetime
 
 import pandas as pd
@@ -47,7 +49,7 @@ def run_bronze(engine: Engine, batch_id: str | None = None, now: datetime | None
         started = datetime.now(UTC)
         df = extract_fn(fields, win, src_cfg, now)
         if not wrote_any:
-            quality.start_run(engine, batch_id)
+            quality.start_run(engine, batch_id, started_at=now)
         df = lake.enrich_with_lineage(df, source_system=source, batch_id=batch_id)
         if lake.write_parquet(df, settings.storage_path, "bronze", cfg["domain"], source, batch_id):
             wrote_any = True
@@ -112,36 +114,66 @@ def run_gold(engine: Engine, batch_id: str) -> int:
     trace.add_gold_step(engine, batch_id, metrics)
     quality.record_layer(engine, batch_id, "gold", "daily_field_metrics", rows, started, datetime.now(UTC),
                          location="postgres:gold.daily_field_metrics")
-    quality.finish_run(engine, batch_id, "ok")
+    quality.finish_run(engine, batch_id, "ok", last_measured_at=quality.last_measured_at(silver_batch))
     return rows
 
 
+FORCE_FAILURE_ENV = "PIPELINE_FORCE_FAILURE"
+
+
+def force_failure_enabled() -> bool:
+    """Falla inyectada a propósito, SOLO para probar las alertas (scripts/simulate_alerts.py). Apagada por defecto."""
+    return os.getenv(FORCE_FAILURE_ENV, "false").strip().lower() in ("1", "true", "yes", "si", "sí")
+
+
 def run_all(engine: Engine | None = None, sources: list[str] | None = None) -> str | None:
+    """
+    Corrida incremental completa. Toda corrida que llega a escribir datos, o que falla en cualquier
+    etapa, deja su fila en gold.dq_run_metrics (run_status SUCCESS o FAILED, tiempos y frescura).
+    Si la base no responde, la fila no se puede escribir: esa ausencia la detecta la alerta AL01.
+    """
     engine = engine or db.get_engine()
-    batch_id = run_bronze(engine, sources=sources)
-    if batch_id is None:
-        print("[PIPELINE] Nada nuevo para procesar.")
-        return None
+    batch_id, started = lake.new_batch_id(), datetime.now(UTC)
+    wrote = False
     try:
+        if force_failure_enabled():
+            raise RuntimeError(f"Falla forzada para probar las alertas ({FORCE_FAILURE_ENV}=true).")
+        wrote = run_bronze(engine, batch_id=batch_id, now=started, sources=sources) is not None
+        if not wrote:
+            print("[PIPELINE] Nada nuevo para procesar.")
+            return None
         run_silver(engine, batch_id)
         run_gold(engine, batch_id)
     except Exception:
-        quality.finish_run(engine, batch_id, "failed")
+        try:
+            quality.finish_run(engine, batch_id, "failed", started_at=started)
+            print(f"[PIPELINE] Corrida {batch_id} registrada como FAILED.")
+        except Exception as exc:  # la base no responde: no hay fila (lo cubre AL01 por ausencia)
+            print(f"[PIPELINE] No se pudo registrar la falla en gold.dq_run_metrics: {exc}")
         raise
+    finally:
+        print(f"[PIPELINE] Corrida {batch_id}: {(datetime.now(UTC) - started).total_seconds():.1f}s.")
     print(f"[PIPELINE] Lote {batch_id} procesado.")
     return batch_id
 
 
 def latest_batch_id(engine: Engine) -> str | None:
-    """Último lote registrado (útil para correr las etapas por separado desde notebooks)."""
+    """Último lote con datos en Bronze (útil para correr las etapas por separado desde notebooks)."""
     with engine.connect() as conn:
         return conn.exec_driver_sql(
-            "SELECT _batch_id FROM gold.dq_run_metrics ORDER BY run_start DESC LIMIT 1"
+            "SELECT _batch_id FROM gold.dq_run_metrics WHERE _batch_id IN "
+            "(SELECT _batch_id FROM gold.pipeline_layer_metrics WHERE layer = 'bronze') "
+            "ORDER BY run_start DESC LIMIT 1"
         ).scalar_one_or_none()
 
 
 def reprocess(batch_id: str, engine: Engine | None = None) -> None:
     """Backfill: regenera Silver, Quarantine y Gold de un lote a partir de Bronze."""
     engine = engine or db.get_engine()
-    run_silver(engine, batch_id)
-    run_gold(engine, batch_id)
+    quality.start_run(engine, batch_id, restart=True)
+    try:
+        run_silver(engine, batch_id)
+        run_gold(engine, batch_id)
+    except Exception:
+        quality.finish_run(engine, batch_id, "failed")
+        raise

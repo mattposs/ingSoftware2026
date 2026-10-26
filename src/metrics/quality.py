@@ -2,6 +2,8 @@
 quality.py
 Registro de la corrida (gold.dq_run_metrics) y de los errores detectados (gold.dq_errors).
 Data Quality Score estricto = VALID / total × 100 y % utilizable = (VALID + WARNING) / total × 100 (RF07, decisión D2).
+Cada corrida guarda además run_status (SUCCESS / FAILED), started_at, finished_at, duration_seconds y
+last_measured_at, que usan las alertas AL01 / AL02 y el panel de salud del pipeline.
 """
 
 from datetime import UTC, datetime
@@ -17,26 +19,64 @@ ERROR_COLUMNS = [
 ]
 
 
-def start_run(engine: Engine, batch_id: str) -> None:
+RUN_STATUS = {"ok": "SUCCESS", "failed": "FAILED"}
+
+
+def start_run(engine: Engine, batch_id: str, restart: bool = False, started_at: datetime | None = None) -> None:
+    """Crea la fila de la corrida. restart=True (reproceso) vuelve a tomar el tiempo desde cero."""
+    restart_sql = ", started_at = now(), finished_at = NULL, run_status = NULL, duration_seconds = NULL" if restart else ""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                f"""
+                INSERT INTO gold.dq_run_metrics (_batch_id, run_start, started_at, status)
+                VALUES (:b, now(), COALESCE(:s, now()), 'running')
+                ON CONFLICT (_batch_id) DO UPDATE SET run_end = NULL, status = 'running'{restart_sql}
+                """
+            ),
+            {"b": batch_id, "s": started_at},
+        )
+
+
+def finish_run(
+    engine: Engine,
+    batch_id: str,
+    status: str,
+    started_at: datetime | None = None,
+    last_measured_at: datetime | None = None,
+) -> None:
+    """
+    Cierra la corrida con su estado, tiempos y frescura. Si la fila no existe (la corrida falló antes
+    de escribir en Bronze) la crea, así una falla temprana también queda registrada como FAILED.
+    """
     with engine.begin() as conn:
         conn.execute(
             text(
                 """
-                INSERT INTO gold.dq_run_metrics (_batch_id, run_start, status)
-                VALUES (:b, now(), 'running')
-                ON CONFLICT (_batch_id) DO UPDATE SET run_end = NULL, status = 'running'
+                INSERT INTO gold.dq_run_metrics (_batch_id, run_start, started_at, run_end, finished_at,
+                                                 status, run_status, duration_seconds, last_measured_at)
+                VALUES (:b, COALESCE(:s, now()), COALESCE(:s, now()), now(), now(), :st, :rs,
+                        round(extract(epoch FROM now() - COALESCE(:s, now()))::numeric, 2), :lm)
+                ON CONFLICT (_batch_id) DO UPDATE SET
+                    run_end = now(), finished_at = now(), status = EXCLUDED.status, run_status = EXCLUDED.run_status,
+                    duration_seconds = round(extract(epoch FROM now() - COALESCE(
+                        gold.dq_run_metrics.started_at, gold.dq_run_metrics.run_start))::numeric, 2),
+                    last_measured_at = COALESCE(EXCLUDED.last_measured_at, gold.dq_run_metrics.last_measured_at)
                 """
             ),
-            {"b": batch_id},
+            {"b": batch_id, "st": status, "rs": RUN_STATUS[status], "s": started_at, "lm": last_measured_at},
         )
 
 
-def finish_run(engine: Engine, batch_id: str, status: str) -> None:
-    with engine.begin() as conn:
-        conn.execute(
-            text("UPDATE gold.dq_run_metrics SET run_end = now(), status = :s WHERE _batch_id = :b"),
-            {"b": batch_id, "s": status},
-        )
+def last_measured_at(silver: pd.DataFrame) -> datetime | None:
+    """
+    Timestamp máximo de medición del lote, tomado de Silver (VALID + WARNING). No se usa Bronze
+    porque ahí están los timestamps futuros o inválidos que rechaza DQ03 y falsearían la frescura.
+    """
+    if silver.empty or "timestamp" not in silver:
+        return None
+    latest = pd.to_datetime(silver["timestamp"], utc=True, errors="coerce").max()
+    return None if pd.isna(latest) else latest.to_pydatetime()
 
 
 def record_layer(

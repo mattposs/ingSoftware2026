@@ -59,7 +59,13 @@ def _deep_merge(base: dict, override: dict) -> dict:
 @lru_cache
 def _pipeline_for(env: str) -> dict[str, Any]:
     override = _load_yaml(f"environments/{env}.yaml")
-    return {**_deep_merge(_load_yaml("pipeline.yaml"), override), "environment": env}
+    cfg = {**_deep_merge(_load_yaml("pipeline.yaml"), override), "environment": env}
+    # Solo para pruebas (scripts/simulate_alerts.py, escenario B): pisa la tasa de errores del simulador
+    # sin tocar los YAML versionados. Sin la variable, manda la configuración.
+    error_rate = os.getenv("PIPELINE_IOT_ERROR_RATE")
+    if error_rate:
+        cfg["sources"]["iot_simulator"]["error_rate"] = float(error_rate)
+    return cfg
 
 
 def load_pipeline(env: str | None = None) -> dict[str, Any]:
