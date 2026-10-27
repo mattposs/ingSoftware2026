@@ -5,7 +5,7 @@ Diagrama de las tablas de `sql/schema/01_schema.sql`. Se repite igual en las tre
 - Línea continua: clave foránea real en la base.
 - Línea punteada: relación lógica sin clave foránea, explicada en la etiqueta.
 
-Imagen exportada: [`Diagrama de base de datos.png`](Diagrama%20de%20base%20de%20datos.png) (alta resolución) y [`modelo_datos.svg`](modelo_datos.svg) (vectorial).
+Imagen exportada: [`Diagrama de base de datos.png`](Diagrama%20de%20base%20de%20datos.png) (alta resolución) y [`modelo_datos.svg`](modelo_datos.svg) (vectorial). Las imágenes son anteriores a las columnas de monitoreo de `gold.dq_run_metrics` (`run_status`, `started_at`, `finished_at`, `duration_seconds`, `last_measured_at`); el diagrama de abajo ya las tiene. Versión para el documento, más legible: [`diagramas.md`](diagramas.md).
 
 ```mermaid
 erDiagram
@@ -53,6 +53,11 @@ erDiagram
         integer invalid
         numeric dq_score "estricto: VALID / total"
         numeric pct_utilizable "(VALID + WARNING) / total"
+        text run_status "SUCCESS / FAILED (alerta AL01)"
+        timestamptz started_at
+        timestamptz finished_at
+        numeric duration_seconds "RNF09"
+        timestamptz last_measured_at "máx. timestamp medido (frescura, RNF08)"
     }
 
     GOLD_ERRORS["gold.dq_errors"] {
@@ -122,7 +127,7 @@ erDiagram
 | `etl.watermarks` | Hasta dónde se leyó cada fuente (carga incremental) | La extracción (`run_bronze`) |
 | `gold.fields` | Maestro de los 8 campos, sincronizado desde `config/fields.yaml` | Gold y los dashboards |
 | `gold.daily_field_metrics` | Indicadores diarios por fecha, campo y fuente. **Es lo que consume el dashboard.** | Grafana |
-| `gold.dq_run_metrics` | Una fila por corrida, con sus contadores, el DQ Score estricto y el % utilizable | Grafana, CI |
+| `gold.dq_run_metrics` | Una fila por corrida, con sus contadores, el DQ Score estricto, el % utilizable y el monitoreo (estado SUCCESS / FAILED, duración y frescura) | Grafana (dashboards y alertas AL01 / AL02), CI |
 | `gold.dq_errors` | Cada hallazgo de las reglas (rechazos y warnings), con el registro que lo originó (RF08) | Grafana |
 | `gold.pipeline_layer_metrics` | Qué hizo cada capa en cada lote: registros, duración y ventana (RNF02) | Dashboard «Flujo del ETL» |
 | `gold.etl_trace` y `gold.etl_trace_steps` | Registros de muestra y lo que les pasó en cada uno de los 5 pasos | Dashboard «ETL paso a paso» |

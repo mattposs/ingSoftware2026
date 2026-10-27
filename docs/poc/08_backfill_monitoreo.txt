@@ -1,0 +1,11 @@
+$ python scripts/backfill_monitoreo.py --base agro_poc --lake storage/poc
+[BACKFILL] agro_poc: 2 corridas completadas.
+                           _batch_id status run_status                       started_at                      finished_at  duration_seconds          last_measured_at
+ece83881-91dc-4356-b6cf-eb7ddfa7f759     ok    SUCCESS 2026-10-20 23:06:58.015699+00:00 2026-10-20 23:07:07.682368+00:00              9.67 2026-10-20 23:00:00+00:00
+                   poc-dq05-ba8db9eb     ok    SUCCESS 2026-10-20 23:10:12.306487+00:00 2026-10-20 23:10:12.918257+00:00              0.61                       NaT
+
+$ python scripts/backfill_monitoreo.py --base agro_poc_grafana --lake storage/poc
+[BACKFILL] agro_poc_grafana: 1 corridas completadas.
+                           _batch_id status run_status                       started_at                      finished_at  duration_seconds          last_measured_at
+ece83881-91dc-4356-b6cf-eb7ddfa7f759     ok    SUCCESS 2026-10-20 23:06:58.015699+00:00 2026-10-20 23:07:07.682368+00:00              9.67 2026-10-20 23:00:00+00:00
+
