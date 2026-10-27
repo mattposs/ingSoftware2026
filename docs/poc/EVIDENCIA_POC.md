@@ -14,13 +14,14 @@ Todos los números de este documento salen de **una corrida real** del pipeline.
 | [05_casos_punta_a_punta.md](05_casos_punta_a_punta.md) | Casos DQ10 (LIT-05) y DQ05 (LIT-02), de Bronze a Gold |
 | [06a_test_en_rojo_local.txt](06a_test_en_rojo_local.txt), [06b_pytest_y_cobertura.txt](06b_pytest_y_cobertura.txt) | Test que falla y suite completa en verde con cobertura |
 | [07_grafana_consultas.md](07_grafana_consultas.md), [07b_permisos_usuario_dashboard.txt](07b_permisos_usuario_dashboard.txt) | Consultas de los 37 paneles y prueba de permisos del usuario del dashboard |
+| [../evidencia_alertas/](../evidencia_alertas/) | Monitoreo y alertas: escenarios provocados, capturas y RNF medidos (sección 8, ensayo del 26/10/2026) |
 
 ## 1. Ejecución
 
 Los comandos son para PowerShell y se ejecutan desde la raíz del repositorio.
 
 ```powershell
-# 1. Levantar todo: PostgreSQL, 3 schedulers (dev, staging, prod) y Grafana
+# 1. Levantar todo: PostgreSQL, 3 schedulers (dev, staging, prod), Grafana y Mailpit (correo de las alertas)
 docker compose up -d --build
 docker compose ps
 
@@ -285,7 +286,38 @@ GROUP BY 1 ORDER BY 1
   - **(b)** Agregar una fuente de datos "Agro · POC" que apunte a `agro_poc`.
   - **(c)** Sacar las capturas igual, filtrando por los campos `LIT-*` en el selector «Campo».
 
-## 8. Resumen
+## 8. Monitoreo y alertas
+
+Ensayo del **26/10/2026** en STAGING, posterior a la corrida de la POC. Los datos salen de `gold.dq_run_metrics`, de la API de Grafana y de Mailpit. Detalle completo en [`../evidencia_alertas/resumen.md`](../evidencia_alertas/resumen.md).
+
+- **Registro de corridas:** `gold.dq_run_metrics` guarda `run_status` (SUCCESS / FAILED), `started_at`, `finished_at`, `duration_seconds` y `last_measured_at`, también en las corridas que fallan. El pipeline agrega esas columnas al arrancar si la base es anterior.
+- **Panel de salud:** el dashboard de calidad tiene la fila «Salud del pipeline», con el estado de la última corrida, la duración, los minutos desde la última corrida, la frescura y las corridas fallidas en 24 h.
+- **Alertas** (Grafana Alerting, provisionadas como código, evaluadas cada 1 min, STAGING y PROD):
+  - **AL01**, crítica: la última corrida falló, o pasaron más de 30 min sin corridas nuevas.
+  - **AL02**, alta: el DQ Score es menor que 80 %, o cayó más de 10 puntos contra el promedio de 24 h.
+  - Las notificaciones llegan por correo a Mailpit (http://localhost:8025).
+
+```powershell
+python scripts/simulate_alerts.py --escenario A   # corrida fallida  -> AL01
+python scripts/simulate_alerts.py --escenario B   # DQ Score bajo    -> AL02
+python scripts/verify_rnf.py                      # RNF medidos
+```
+
+| Escenario | Falla provocada | Alerta | Falla (UTC) | Disparo (UTC) | Minutos | Correo (UTC) |
+|---|---|---|---|---|---|---|
+| A | Corrida con `PIPELINE_FORCE_FAILURE=true` | AL01 | 23:45:36 | 23:46:00 | 0,39 | 23:46:12 |
+| B | Corrida IoT con `PIPELINE_IOT_ERROR_RATE=0.5`: DQ Score 44,44 % (4 VALID de 9) | AL02 | 23:16:14 | 23:17:00 | 0,76 | 23:17:17 |
+
+RNF11 (alerta en ≤ 30 min): **cumple** en los dos escenarios.
+
+RNF medidos ([`../evidencia_alertas/rnf_medidos.md`](../evidencia_alertas/rnf_medidos.md)):
+- **Cumplen:** RNF02, RNF03, RNF04, RNF06, RNF08, RNF09 y RNF10.
+- **No cumple RNF07:** el máximo fue 41 corridas en un día contra 96 pedidas, porque el stack no corre las 24 h.
+- RNF08 y RNF09 se midieron sobre solo 4 corridas.
+
+**Hallazgo:** cada corrida incremental procesa 8 registros. Con tan pocos, un par de rechazos deja el score debajo de 80 %. Una corrida normal de STAGING dio 50 % y AL02 se disparó sin una falla real. Está anotado como decisión pendiente D26.
+
+## 9. Resumen
 
 | Dato | Valor |
 |---|---|
@@ -304,10 +336,13 @@ GROUP BY 1 ORDER BY 1
 | Tests | 93 passed; cobertura de validación 92 % (mínimo 80 %) |
 | Test en rojo (local) | 5 failed con DQ08 `min: -100`, incluido `test_gold_no_tiene_registros_invalidos` |
 | Bug encontrado por la POC | Lote con solo rechazos rompía las trazas; corregido, con test de regresión |
+| Alerta AL01 (corrida fallida) | disparada 0,39 min después de la falla (26/10/2026, STAGING) |
+| Alerta AL02 (DQ Score 44,44 %) | disparada 0,76 min después de la corrida (26/10/2026, STAGING) |
+| Tests hoy (con el monitoreo) | 103 passed; cobertura de validación 92 % |
 
 ### Capturas para sacar a mano
 
-1. `captura_01_docker_ps.png`: terminal con `docker compose ps` (5 contenedores, postgres *healthy*).
+1. `captura_01_docker_ps.png`: terminal con `docker compose ps` (6 contenedores: postgres *healthy*, 3 schedulers, Grafana y Mailpit). El archivo [02_docker_compose_ps.txt](02_docker_compose_ps.txt) es de la corrida del 20/10, antes de Mailpit, y muestra 5.
 2. `captura_02_corrida_pipeline.png`: terminal con la salida de la corrida (sección 1).
 3. `captura_03_lake_carpetas.png`: Explorador de archivos en `storage/poc/` mostrando las carpetas `bronze`, `silver` y `quarantine` con sus Parquet.
 4. `captura_04_bronze.png`, `captura_05_silver.png` y `captura_06_quarantine.png`: los registros de ejemplo. Lo más simple es capturar las tablas de [04_evidencia_corrida.md](04_evidencia_corrida.md) abiertas en VS Code (vista previa de Markdown). Para verlos en los notebooks de `notebooks/`, hay que abrirlos con `STORAGE_PATH=storage/poc` y `APP_ENV=staging`; si no, leen el lake de DEV.
@@ -322,12 +357,13 @@ GROUP BY 1 ORDER BY 1
 13. `captura_16_ci_verde.png`: el mismo PR después del `git revert`, con todos los checks en verde.
 14. `captura_17_cobertura.png`: el log de CI (o la terminal) con la cobertura de `src/validation` (92 %).
 15. `captura_18_permisos_dashboard.png`: el resultado de [07b](07b_permisos_usuario_dashboard.txt) (`permission denied` en `etl` y en `INSERT`).
+16. **Alertas: ya generadas**, no hay que sacarlas a mano. Están en [`../evidencia_alertas/`](../evidencia_alertas/): `AL01_*.png` y `AL02_*.png` (lista de alertas en Firing, detalle de la regla, panel de salud y correo en Mailpit), con la hora de la captura en pantalla.
 
 ### Repositorio
 
 - Repositorio: https://github.com/SebastianMB1/IngSoftwareETL
-- Rama de trabajo: `feature/entornos-etl-paso-a-paso`
-- Evidencia: `docs/poc/`
+- Ramas de trabajo: `feature/entornos-etl-paso-a-paso` (POC) y `feature/alertas-pipeline` (monitoreo y alertas)
+- Evidencia: `docs/poc/` y `docs/evidencia_alertas/`
 
 ### Qué grabar en el video de la demo (unos 5 a 7 minutos)
 
@@ -337,4 +373,5 @@ GROUP BY 1 ORDER BY 1
 4. **(1 min)** Un registro rechazado: el caso DQ10 de LIT-05, en Bronze, en `gold.dq_errors` y en Quarantine, y la consulta que demuestra que no llegó a Gold.
 5. **(1,5 min)** Grafana: DQ Score, hallazgos por regla, calidad por campo y día, y el «ETL paso a paso» siguiendo el mismo registro.
 6. **(1 min)** CI/CD: el PR en rojo por el cambio en `rules.yaml` y en verde después del revert.
-7. **(30 s)** Cierre: el bug que encontró la POC y cómo se recuperó el lote desde Bronze sin perder datos.
+7. **(1 min)** Alertas: `python scripts/simulate_alerts.py --escenario A`, AL01 en Firing en Grafana y el correo en Mailpit (http://localhost:8025).
+8. **(30 s)** Cierre: el bug que encontró la POC y cómo se recuperó el lote desde Bronze sin perder datos.
