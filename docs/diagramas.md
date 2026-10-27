@@ -2,6 +2,13 @@
 
 Tres diagramas en Mermaid, armados para que entren legibles en una página A4 del documento: arquitectura general, esquema Medallion y base de datos. Todo lo que muestran sale del repositorio (`docker-compose.yml`, `src/pipeline.py`, `config/`, `sql/schema/01_schema.sql` y `grafana/`).
 
+**Imágenes listas para el Word** (PNG a escala 3, fondo blanco), en [`diagramas/`](diagramas/):
+[arquitectura general](diagramas/1_arquitectura_general.png) ·
+[esquema Medallion](diagramas/2_esquema_medallion.png) ·
+[base de datos compacta](diagramas/3a_base_de_datos_compacta.png) ·
+[base de datos completa](diagramas/3b_base_de_datos_completa.png).
+Si cambiás un diagrama, volvé a exportarlo: estas imágenes no se actualizan solas.
+
 Para verlos: GitHub y VS Code (con la extensión *Markdown Preview Mermaid Support*) los dibujan solos. También se pueden pegar en https://mermaid.live.
 
 ## Cómo pasarlos al Word sin que se pierda la letra
