@@ -2,68 +2,101 @@ dataset_name: agro_dq_run_metrics_gold
 domain: agro
 entity: dq_run_metrics
 layer: gold
-description: Resumen de cada corrida del pipeline y su Data Quality Score.
+description: 'Resumen de cada corrida del pipeline: Data Quality Score y monitoreo
+  (estado, duración y frescura).'
 location: postgres:gold.dq_run_metrics
-last_cataloged_at: '2026-10-14T01:02:00.964897+00:00'
+last_cataloged_at: '2026-10-26T23:06:38.872103+00:00'
 columns:
 - name: _batch_id
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: 9b1c8b81-0295-4b2f-83f8-5d3c13ed38e5
+  sample_value: 4d5e5f19-f0b0-41f9-9be3-df7e8ffc4184
   description: Identificador UUID de la corrida que generó el registro (linaje).
 - name: run_start
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-14 01:01:53.421180+00:00'
+  sample_value: '2026-10-26 23:02:42.542173+00:00'
   description: Inicio de la corrida (UTC).
 - name: run_end
   data_type: datetime64[us, UTC]
   nullable: false
   null_percentage: 0.0
-  sample_value: '2026-10-14 01:01:55.844484+00:00'
+  sample_value: '2026-10-26 23:02:42.577302+00:00'
   description: Fin de la corrida (UTC); vacío si sigue en curso o falló antes de terminar.
 - name: status
   data_type: str
   nullable: false
   null_percentage: 0.0
-  sample_value: ok
+  sample_value: failed
   description: 'Estado de la corrida: running, ok o failed.'
 - name: total
-  data_type: int64
-  nullable: false
-  null_percentage: 0.0
-  sample_value: '1339'
+  data_type: float64
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '8.0'
   description: Registros recibidos en el lote.
 - name: valid
-  data_type: int64
-  nullable: false
-  null_percentage: 0.0
-  sample_value: '1191'
+  data_type: float64
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '7.0'
   description: Registros sin hallazgos.
 - name: warning
-  data_type: int64
-  nullable: false
-  null_percentage: 0.0
-  sample_value: '57'
+  data_type: float64
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '0.0'
   description: Registros publicados con al menos un warning.
 - name: invalid
-  data_type: int64
-  nullable: false
-  null_percentage: 0.0
-  sample_value: '91'
+  data_type: float64
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '1.0'
   description: Registros rechazados (enviados a quarantine).
 - name: dq_score
   data_type: float64
-  nullable: false
-  null_percentage: 0.0
-  sample_value: '88.95'
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '87.5'
   description: Data Quality Score estricto = valid / total × 100 (los warning no cuentan).
 - name: pct_utilizable
   data_type: float64
-  nullable: false
-  null_percentage: 0.0
-  sample_value: '93.2'
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '87.5'
   description: '% utilizable = (valid + warning) / total × 100: registros publicados
     en Silver.'
+- name: run_status
+  data_type: str
+  nullable: false
+  null_percentage: 0.0
+  sample_value: FAILED
+  description: 'Resultado de la corrida para el monitoreo: SUCCESS o FAILED (alerta
+    AL01). NULL en corridas anteriores.'
+- name: started_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-26 23:02:42.542173+00:00'
+  description: Inicio de la etapa o de la corrida (UTC).
+- name: finished_at
+  data_type: datetime64[us, UTC]
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '2026-10-26 23:02:42.577302+00:00'
+  description: Fin de la etapa o de la corrida (UTC).
+- name: duration_seconds
+  data_type: float64
+  nullable: false
+  null_percentage: 0.0
+  sample_value: '0.04'
+  description: Duración de la corrida en segundos, de started_at a finished_at (RNF09).
+- name: last_measured_at
+  data_type: datetime64[us, UTC]
+  nullable: true
+  null_percentage: 50.0
+  sample_value: '2026-10-26 23:00:00+00:00'
+  description: Timestamp máximo de medición de los registros válidos del lote (para
+    la frescura, RNF08).

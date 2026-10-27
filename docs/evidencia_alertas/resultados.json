@@ -1,0 +1,98 @@
+[
+  {
+    "escenario": "A",
+    "alerta": "AL01",
+    "estado_previo": "inactive",
+    "falla": "Corrida del pipeline con PIPELINE_FORCE_FAILURE=true (falla antes de la extracción)",
+    "como": "docker compose run --rm -e APP_ENV=staging -e PIPELINE_FORCE_FAILURE=true pipeline",
+    "batch_id": "35f98e4a-f19e-456f-bcf2-b359b24c3d73",
+    "codigo_salida": 1,
+    "hora_falla": "2026-10-26T23:45:36.714826+00:00",
+    "hora_disparo": "2026-10-26T23:46:00+00:00",
+    "valores_regla": "1e+00",
+    "minutos": 0.39,
+    "notificacion": {
+      "id": "3s96JJDH4f8FJhffCe5zpU",
+      "asunto": "[FIRING:1] AL01 · Corrida fallida o ausente · STAGING staging Alertas del pipeline (AL01 critica)",
+      "recibido": "2026-10-26T23:46:12.570000+00:00"
+    },
+    "capturas": [
+      {
+        "archivo": "AL01_firing.png",
+        "que_muestra": "Lista de alertas con la regla en Firing",
+        "escenario": "A",
+        "tomada": "2026-10-26T23:46:28.302115+00:00"
+      },
+      {
+        "archivo": "AL01_detalle_regla.png",
+        "que_muestra": "Detalle de la regla",
+        "escenario": "A",
+        "tomada": "2026-10-26T23:46:34.167910+00:00"
+      },
+      {
+        "archivo": "AL01_panel_salud.png",
+        "que_muestra": "Panel de salud del pipeline (dashboard de calidad, STAGING)",
+        "escenario": "A",
+        "tomada": "2026-10-26T23:46:40.847923+00:00"
+      },
+      {
+        "archivo": "AL01_notificacion_mailpit.png",
+        "que_muestra": "Notificación recibida en Mailpit",
+        "escenario": "A",
+        "tomada": "2026-10-26T23:46:49.527487+00:00"
+      }
+    ]
+  },
+  {
+    "escenario": "B",
+    "alerta": "AL02",
+    "batch_id": "e8e6d23c-9bef-4890-93c8-f538dc0934a0",
+    "hora_falla": "2026-10-26T23:16:14.166619+00:00",
+    "hora_disparo": "2026-10-26T23:17:00+00:00",
+    "valores_regla": {
+      "ALERTA": 1,
+      "CAIDA_VS_24H": 43.17,
+      "DQ_SCORE": 44.44
+    },
+    "minutos": 0.76,
+    "notificacion": {
+      "id": "gTSq3qU4jCbh4bfn2uhe67",
+      "asunto": "[FIRING:1] AL02 · Caída del DQ Score · STAGING staging Alertas del pipeline (AL02 alta)",
+      "recibido": "2026-10-26T23:17:17.579000+00:00"
+    },
+    "capturas": [
+      {
+        "archivo": "AL02_firing.png",
+        "que_muestra": "Lista de alertas con la regla en Firing",
+        "escenario": "B",
+        "tomada": "2026-10-26T23:45:05.868088+00:00"
+      },
+      {
+        "archivo": "AL02_detalle_regla.png",
+        "que_muestra": "Detalle de la regla",
+        "escenario": "B",
+        "tomada": "2026-10-26T23:17:35.492135+00:00"
+      },
+      {
+        "archivo": "AL02_panel_salud.png",
+        "que_muestra": "Panel de salud del pipeline (dashboard de calidad, STAGING)",
+        "escenario": "B",
+        "tomada": "2026-10-26T23:17:43.502520+00:00"
+      },
+      {
+        "archivo": "AL02_notificacion_mailpit.png",
+        "que_muestra": "Notificación recibida en Mailpit",
+        "escenario": "B",
+        "tomada": "2026-10-26T23:17:52.445571+00:00"
+      }
+    ],
+    "recuperado": true,
+    "falla": "Corrida del simulador IoT con 50 % de registros con errores inyectados",
+    "como": "docker compose run --rm -e APP_ENV=staging -e PIPELINE_IOT_ERROR_RATE=0.5 pipeline python -m src.main --env staging --source iot_simulator",
+    "dq_score": 44.44,
+    "total": 9,
+    "valid": 4,
+    "warning": 1,
+    "invalid": 4
+  }
+]

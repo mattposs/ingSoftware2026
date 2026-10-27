@@ -1,0 +1,5 @@
+# Solo para generar la evidencia de las alertas (scripts/simulate_alerts.py). No lo usa el pipeline ni el CI.
+#   pip install -r scripts/requirements-evidencia.txt
+#   python -m playwright install chromium
+-r ../requirements.txt
+playwright>=1.49

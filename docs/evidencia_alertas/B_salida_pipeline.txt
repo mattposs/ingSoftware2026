@@ -1,0 +1,15 @@
+$ docker compose run --rm -e APP_ENV=staging -e PIPELINE_IOT_ERROR_RATE=0.5 pipeline python -m src.main --env staging --source iot_simulator
+(código de salida: 0)
+
+[PIPELINE] Entorno: STAGING · base agro_staging · lake /app/storage/staging
+[BRONZE] 9 registros -> /app/storage/staging/bronze/agro/iot_simulator/year=2026/month=10/batch_e8e6d23c-9bef-4890-93c8-f538dc0934a0.parquet
+[STATE] Watermark agro.iot_simulator = 2026-10-26T23:15:00+00:00
+[SILVER] 5 registros -> /app/storage/staging/silver/agro/measurements/year=2026/month=10/clean_e8e6d23c-9bef-4890-93c8-f538dc0934a0.parquet
+[QUARANTINE] 4 registros -> /app/storage/staging/quarantine/agro/measurements/year=2026/month=10/rejected_e8e6d23c-9bef-4890-93c8-f538dc0934a0.parquet
+[DQ] total=9 valid=4 warning=1 invalid=4 score=44.44% utilizable=55.56% errores=9
+[DB] Upsert de 8 filas en gold.fields.
+[DB] Upsert de 5 filas en gold.daily_field_metrics.
+[PIPELINE] Corrida e8e6d23c-9bef-4890-93c8-f538dc0934a0: 38.4s.
+[PIPELINE] Lote e8e6d23c-9bef-4890-93c8-f538dc0934a0 procesado.
+[PIPELINE] Duración: 39.5s (objetivo RNF08: < 300s)
+
