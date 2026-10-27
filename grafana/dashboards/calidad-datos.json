@@ -1,7 +1,7 @@
 {
   "uid": "agro-calidad",
   "title": "Calidad de datos agroclimáticos",
-  "description": "Pipeline DataOps · UnaCocuCha SRL para Grupo Agro del Litoral S.A. (POC UADE 2026)",
+  "description": "Pipeline DataOps · Datum Sur para Grupo Agro del Litoral S.A. (POC UADE 2026)",
   "tags": [
     "agro",
     "dataops",
@@ -515,13 +515,389 @@
       }
     },
     {
+      "id": 20,
+      "type": "row",
+      "title": "Salud del pipeline (alertas AL01 y AL02)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Estado de la última corrida",
+      "description": "run_status de la última fila de gold.dq_run_metrics. FAILED dispara la alerta AL01. Las corridas anteriores al monitoreo muestran su estado viejo (OK).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT COALESCE(run_status, upper(status)) AS estado FROM gold.dq_run_metrics ORDER BY run_start DESC LIMIT 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "SUCCESS": {
+                  "text": "✔ SUCCESS",
+                  "color": "green",
+                  "index": 0
+                },
+                "OK": {
+                  "text": "✔ OK",
+                  "color": "green",
+                  "index": 1
+                },
+                "FAILED": {
+                  "text": "✖ FAILED",
+                  "color": "red",
+                  "index": 2
+                },
+                "RUNNING": {
+                  "text": "⟳ EN CURSO",
+                  "color": "blue",
+                  "index": 3
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^estado$/",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 21,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 5,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Duración de la última corrida",
+      "description": "duration_seconds de la última corrida con tiempo registrado. Objetivo RNF09: ≤ 2 minutos.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT duration_seconds FROM gold.dq_run_metrics WHERE duration_seconds IS NOT NULL ORDER BY run_start DESC LIMIT 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "unit": "s",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 22,
+      "gridPos": {
+        "x": 5,
+        "y": 6,
+        "w": 5,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Minutos desde la última corrida",
+      "description": "Tiempo desde la última fila en gold.dq_run_metrics. El scheduler corre cada 15 min; AL01 se dispara pasados los 30 min.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT round((extract(epoch FROM now() - max(run_start)) / 60)::numeric, 1) AS minutos FROM gold.dq_run_metrics"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          },
+          "unit": "m",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 23,
+      "gridPos": {
+        "x": 10,
+        "y": 6,
+        "w": 5,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Frescura (fin − última medición)",
+      "description": "finished_at − last_measured_at de la última corrida: cuánto tarda un dato en estar publicado. Objetivo RNF08: ≤ 20 min en el 95 % de las corridas y ≤ 30 min como máximo.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT round((extract(epoch FROM finished_at - last_measured_at) / 60)::numeric, 1) AS frescura FROM gold.dq_run_metrics WHERE last_measured_at IS NOT NULL ORDER BY run_start DESC LIMIT 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          },
+          "unit": "m",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 24,
+      "gridPos": {
+        "x": 15,
+        "y": 6,
+        "w": 5,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Corridas fallidas (24 h)",
+      "description": "Cantidad de corridas con run_status FAILED en las últimas 24 horas.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "${entorno}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "${entorno}"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) AS fallidas FROM gold.dq_run_metrics WHERE run_status = 'FAILED' AND run_start > now() - interval '24 hours'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 25,
+      "gridPos": {
+        "x": 20,
+        "y": 6,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
       "id": 8,
       "type": "row",
       "title": "Evolución de la calidad",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 10,
         "w": 24,
         "h": 1
       },
@@ -597,7 +973,7 @@
       "id": 9,
       "gridPos": {
         "x": 0,
-        "y": 6,
+        "y": 11,
         "w": 12,
         "h": 8
       },
@@ -688,7 +1064,7 @@
       "id": 10,
       "gridPos": {
         "x": 12,
-        "y": 6,
+        "y": 11,
         "w": 12,
         "h": 8
       },
@@ -704,7 +1080,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 19,
         "w": 24,
         "h": 1
       },
@@ -884,7 +1260,7 @@
       "id": 12,
       "gridPos": {
         "x": 0,
-        "y": 15,
+        "y": 20,
         "w": 12,
         "h": 9
       },
@@ -1067,7 +1443,7 @@
       "id": 13,
       "gridPos": {
         "x": 12,
-        "y": 15,
+        "y": 20,
         "w": 12,
         "h": 9
       },
@@ -1185,7 +1561,7 @@
       "id": 14,
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 29,
         "w": 14,
         "h": 11
       },
@@ -1243,7 +1619,7 @@
       "id": 15,
       "gridPos": {
         "x": 14,
-        "y": 24,
+        "y": 29,
         "w": 10,
         "h": 11
       },
@@ -1259,7 +1635,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 40,
         "w": 24,
         "h": 1
       },
@@ -1329,7 +1705,7 @@
       "id": 17,
       "gridPos": {
         "x": 0,
-        "y": 36,
+        "y": 41,
         "w": 12,
         "h": 10
       },
@@ -1401,7 +1777,7 @@
       "id": 18,
       "gridPos": {
         "x": 12,
-        "y": 36,
+        "y": 41,
         "w": 12,
         "h": 10
       },

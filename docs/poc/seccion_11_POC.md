@@ -4,7 +4,7 @@ La prueba de concepto demuestra el funcionamiento de punta a punta del pipeline 
 
 ### 11.1 Entorno y ejecución
 
-La solución corre localmente con Docker Compose. Un único comando levanta PostgreSQL, los procesos programados del pipeline (uno por entorno: desarrollo, staging y producción) y Grafana:
+La solución corre localmente con Docker Compose. Un único comando levanta PostgreSQL, los procesos programados del pipeline (uno por entorno: desarrollo, staging y producción), Grafana y Mailpit, un servidor de correo local que recibe las notificaciones de las alertas:
 
 ```
 docker compose up -d --build
@@ -21,7 +21,7 @@ La corrida completa (extracción, validación y carga en Gold) tardó 9,9 segund
 - Repositorio: https://github.com/SebastianMB1/IngSoftwareETL
 - Video de la demo: [COMPLETAR: link al video]
 
-[CAPTURA 1: terminal con `docker compose ps` mostrando los cinco contenedores en ejecución y PostgreSQL en estado *healthy*.]
+[CAPTURA 1: terminal con `docker compose ps` mostrando los seis contenedores en ejecución (PostgreSQL en estado *healthy*, los tres schedulers, Grafana y Mailpit).]
 Figura 11.1. Servicios de la POC levantados con Docker Compose.
 
 [CAPTURA 2: terminal con la salida de la corrida del pipeline: registros escritos en Bronze, Silver y Quarantine, línea `[DQ]` con los totales y duración.]
@@ -163,7 +163,7 @@ El test de control es `test_gold_no_tiene_registros_invalidos` (`tests/test_inte
 
 Es el control que mitiga la falla silenciosa de calidad (riesgo R03) y verifica el requerimiento RNF04.
 
-Para la evidencia se creó una rama de prueba. En un primer commit se aflojó la regla DQ08 en `config/rules.yaml` (`min: 0` → `min: -100`) para dejar pasar precipitaciones negativas: el workflow falla porque Gold queda con un total de lluvia negativo. En un segundo commit se revierte el cambio y el workflow vuelve a pasar. En la verificación local previa, el cambio hizo fallar 5 tests, entre ellos el test de control. Sin el cambio pasan los 93 tests, con 92 % de cobertura en el módulo de validación (mínimo exigido: 80 %).
+Para la evidencia se creó una rama de prueba. En un primer commit se aflojó la regla DQ08 en `config/rules.yaml` (`min: 0` → `min: -100`) para dejar pasar precipitaciones negativas: el workflow falla porque Gold queda con un total de lluvia negativo. En un segundo commit se revierte el cambio y el workflow vuelve a pasar. En la verificación local previa, el cambio hizo fallar 5 tests, entre ellos el test de control. Sin el cambio pasan los 93 tests, con 92 % de cobertura en el módulo de validación (mínimo exigido: 80 %). Con los tests del monitoreo de corridas (11.6) hoy son 103, y la cobertura del módulo de validación sigue en 92 %.
 
 - Run en rojo: [COMPLETAR: link o ID del run en GitHub Actions]
 - Run en verde: [COMPLETAR: link o ID del run en GitHub Actions]
@@ -174,7 +174,10 @@ Figura 11.6. Commit en rojo: el test de control detecta datos inválidos en Gold
 [CAPTURA 7: el mismo pull request después de revertir el cambio, con todos los checks en verde y el resumen de cobertura.]
 Figura 11.7. Commit en verde: el pipeline vuelve a cumplir las reglas.
 
-### 11.6 Dashboard
+### 11.6 Dashboard, monitoreo y alertas
+
+#### Dashboard
+
 
 El dashboard se construyó en Grafana y se publica en `http://localhost:3000`. Tiene tres tableros:
 
@@ -201,6 +204,61 @@ Figura 11.9. DQ Score estricto por campo y por día.
 [CAPTURA 10: panel «Hallazgos por regla».]
 Figura 11.10. Hallazgos por regla de calidad.
 
+#### Monitoreo del pipeline
+
+Cada corrida queda registrada en `gold.dq_run_metrics` con su resultado (`SUCCESS` o `FAILED`), la hora de inicio y de fin, la duración y el último instante medido de los datos que procesó. Esto vale también para las corridas que fallan. El tablero de calidad suma la fila **«Salud del pipeline»**, que muestra:
+
+- el estado de la última corrida;
+- su duración;
+- los minutos transcurridos desde la última corrida;
+- la frescura del dato, es decir, cuánto tarda una medición en quedar publicada;
+- las corridas fallidas de las últimas 24 horas.
+
+Sobre esa tabla, Grafana evalúa cada minuto dos alertas, definidas como código en el repositorio, para los entornos de staging y producción:
+
+| Alerta | Severidad | Se dispara si… |
+|---|---|---|
+| **AL01** · Corrida fallida o ausente | Crítica | la última corrida terminó con error, o no hay corridas nuevas hace más de 30 minutos (dos ciclos de 15 minutos) |
+| **AL02** · Caída del Data Quality Score | Alta | el DQ Score estricto de la última corrida es menor que 80 %, o cae más de 10 puntos respecto del promedio de las 24 horas anteriores |
+
+Los umbrales se configuran en variables de entorno, sin modificar las consultas. Cada alerta envía un correo, que en la POC recibe Mailpit.
+
+Para la evidencia se provocaron dos fallas en el entorno de staging con el script `scripts/simulate_alerts.py`:
+
+- **Corrida fallida.** El 26/10/2026 se ejecutó una corrida con una falla inyectada a propósito (`PIPELINE_FORCE_FAILURE=true`). La corrida quedó registrada como `FAILED` a las 20:45:36 (hora de Argentina). Grafana disparó **AL01** a las 20:46:00, **0,39 minutos** después, y el correo llegó a las 20:46:12.
+- **Caída del DQ Score.** Se ejecutó una corrida del simulador IoT con el 50 % de los registros con errores (`PIPELINE_IOT_ERROR_RATE=0.5`). El DQ Score de esa corrida fue de **44,44 %** (4 registros válidos de 9) y quedó publicado a las 20:16:14. Grafana disparó **AL02** a las 20:17:00, **0,76 minutos** después, con una caída de 43,17 puntos respecto del promedio de las 24 horas anteriores. El correo llegó a las 20:17:17.
+
+En ambos casos la alerta se disparó en menos de un minuto, muy por debajo de los 30 minutos que exige RNF11.
+
+[CAPTURA opcional: `docs/poc/capturas/grafana_05_salud_pipeline.png`, fila «Salud del pipeline» con la corrida de la POC: SUCCESS, 9,7 s de duración y 7,1 min de frescura.]
+
+[CAPTURA 11: `docs/evidencia_alertas/AL01_firing.png`, lista de reglas de alerta con AL01 en estado *Firing*.]
+Figura 11.11. Alerta AL01 disparada por una corrida fallida.
+
+[CAPTURA 12: `docs/evidencia_alertas/AL01_panel_salud.png`, fila «Salud del pipeline» con la última corrida en `FAILED`.]
+Figura 11.12. Panel de salud del pipeline después de la falla.
+
+[CAPTURA 13: `docs/evidencia_alertas/AL02_detalle_regla.png`, detalle de la regla AL02 en estado *Firing*.]
+Figura 11.13. Alerta AL02 disparada por la caída del DQ Score.
+
+[CAPTURA 14: `docs/evidencia_alertas/AL02_notificacion_mailpit.png`, correo de la alerta recibido en Mailpit.]
+Figura 11.14. Notificación de la alerta por correo.
+
+Además, el script `scripts/verify_rnf.py` midió los requerimientos no funcionales con datos reales:
+
+| RNF | Valor medido | Objetivo | Resultado |
+|---|---|---|---|
+| RNF02 | 0 registros de Bronze sin linaje, de 10.692 | 0 | Cumple |
+| RNF03 | Gold idéntico después de reprocesar un día desde Bronze (508 filas, sin duplicados) | Idéntico | Cumple |
+| RNF04 | 0 registros inválidos en Silver, la única fuente de Gold | 0 | Cumple |
+| RNF06 | Al bajar el umbral de warning de DQ09 de 45 °C a 25 °C en `config/rules.yaml`, el mismo lote pasó de 0 a 44 warnings, sin tocar código | Se aplica sin cambiar código | Cumple |
+| RNF07 | Ningún día llegó a 96 corridas; el máximo fue 41 | 96 por día | **No cumple** |
+| RNF08 | Frescura: p95 de 6,14 min y máximo de 6,8 min (4 corridas) | p95 ≤ 20 min, máximo ≤ 30 min | Cumple |
+| RNF09 | Duración máxima de 38,36 s (4 corridas) | ≤ 2 min | Cumple |
+| RNF10 | 7,65 s para reprocesar un día de 200 sensores (19.355 registros) | ≤ 5 min | Cumple |
+
+RNF07 no se cumple en la POC porque el entorno corre en una computadora personal que no está encendida las 24 horas: el scheduler corre cada 15 minutos mientras el equipo está prendido. RNF08 y RNF09 se midieron sobre las primeras corridas con el monitoreo activo. El detalle está en `docs/evidencia_alertas/rnf_medidos.md`.
+
 ### Relación con los objetivos
 
 La POC cumple los objetivos específicos de la sección 3.2:
@@ -208,8 +266,8 @@ La POC cumple los objetivos específicos de la sección 3.2:
 - **OE1:** integró las dos fuentes para los ocho campos en las tres capas Medallion: Bronze y Silver en Parquet, Gold en PostgreSQL.
 - **OE2:** ejecutó las doce reglas, clasificó el 100 % de los registros (1.193 + 53 + 97 = 1.343) y registró 326 hallazgos con fecha, campo, variable, regla y severidad.
 - **OE3:** apartó los 97 registros inválidos en Quarantine con su motivo y publicó en Gold solo datos validados, que es lo único que consume el dashboard.
-- **OE4:** automatizó la validación con 93 tests y el workflow de CI, que bloquea cualquier cambio que permita datos inválidos en Gold.
-- **OE5:** calculó el Data Quality Score por corrida, por campo y por día.
+- **OE4:** automatizó la validación con 103 tests y el workflow de CI, que bloquea cualquier cambio que permita datos inválidos en Gold.
+- **OE5:** calculó el Data Quality Score por corrida, por campo y por día, y alerta en menos de un minuto cuando una corrida falla o el score cae.
 
 En términos de la meta transversal, cada registro erróneo de la corrida fue detectado, registrado y excluido de los indicadores que respaldan las decisiones de riego, en lugar de usarse sin distinción como ocurre hoy.
 
@@ -219,7 +277,9 @@ En términos de la meta transversal, cada registro erróneo de la corrida fue de
 
 1. [COMPLETAR: link al video de la demo] (11.1).
 2. [COMPLETAR: link o ID del run en rojo] y [COMPLETAR: link o ID del run en verde] de GitHub Actions (11.5). Se obtienen al crear la rama de prueba, abrir el pull request y revertir el cambio.
-3. Capturas 1 a 10, según los marcadores de cada subsección.
+3. Capturas 1 a 10, según los marcadores de cada subsección. Las capturas 11 a 14 ya están generadas en `docs/evidencia_alertas/`, junto con otras cuatro del mismo ensayo.
 4. **Capturas de Grafana (8 a 10):** el dashboard lee las bases de los entornos de desarrollo, staging y producción, no la base limpia usada para esta corrida. Antes de capturar conviene dejar esas bases solo con los campos LIT-01 a LIT-08, o filtrar por esos campos, para que las cifras coincidan con las de esta sección.
-5. Ajustar la numeración de figuras (11.1 a 11.10) a la numeración general del documento, si corresponde.
+5. Ajustar la numeración de figuras (11.1 a 11.14) a la numeración general del documento, si corresponde.
 6. Comando de ejecución: en el documento figura `docker compose run --rm -e APP_ENV=staging pipeline`. La corrida de la evidencia usó además una base y un lake aislados; el comando completo está en `docs/poc/EVIDENCIA_POC.md`. Confirmar cuál se quiere mostrar.
+7. **Numeración de 11.6:** acá el dashboard y el monitoreo comparten la 11.6. Si en el documento la 11.6 es solo de alertas, mover «Dashboard» a otra subsección.
+8. **AL02 y lotes chicos:** cada corrida incremental procesa 8 registros, así que un par de rechazos deja el score debajo de 80 % y AL02 se dispara sin que haya una falla real (pasó en staging con una corrida normal que dio 50 %). Decidir si se evalúa el score de la última hora (decisión D26 en `docs/decisiones.md`) y, según eso, mencionarlo como limitación.

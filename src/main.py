@@ -5,6 +5,10 @@ Punto de entrada del pipeline.
     python -m src.main --source iot_simulator  # solo una fuente
     python -m src.main --reprocess <batch_id>  # backfill desde Bronze
     python -m src.main --env staging           # entorno dev (defecto), staging o prod
+
+Solo para probar las alertas (apagadas por defecto):
+    PIPELINE_FORCE_FAILURE=true      la corrida falla a propósito y queda registrada como FAILED (AL01)
+    PIPELINE_IOT_ERROR_RATE=0.5      el simulador IoT inyecta más errores y baja el DQ Score (AL02)
 """
 
 import argparse
@@ -23,12 +27,14 @@ def main() -> None:
         os.environ["APP_ENV"] = args.env
 
     from src import pipeline  # después de fijar el entorno
+    from src.common import db, migrations
     from src.config import get_settings
 
     settings = get_settings()
     print(f"[PIPELINE] Entorno: {settings.environment.upper()} · base {settings.database_url.rsplit('/', 1)[-1]}"
           f" · lake {settings.storage_path}")
 
+    migrations.ensure_schema(db.get_engine())   # bases creadas antes de las columnas de monitoreo
     started = time.perf_counter()
     if args.reprocess:
         pipeline.reprocess(args.reprocess)

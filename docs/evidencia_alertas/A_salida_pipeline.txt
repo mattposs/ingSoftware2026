@@ -1,0 +1,18 @@
+$ docker compose run --rm -e APP_ENV=staging -e PIPELINE_FORCE_FAILURE=true pipeline python -m src.main --env staging 
+(código de salida: 1)
+
+[PIPELINE] Entorno: STAGING · base agro_staging · lake /app/storage/staging
+[PIPELINE] Corrida 35f98e4a-f19e-456f-bcf2-b359b24c3d73 registrada como FAILED.
+[PIPELINE] Corrida 35f98e4a-f19e-456f-bcf2-b359b24c3d73: 0.1s.
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/app/src/main.py", line 47, in <module>
+    main()
+  File "/app/src/main.py", line 42, in main
+    pipeline.run_all(sources=args.source)
+  File "/app/src/pipeline.py", line 140, in run_all
+    raise RuntimeError(f"Falla forzada para probar las alertas ({FORCE_FAILURE_ENV}=true).")
+RuntimeError: Falla forzada para probar las alertas (PIPELINE_FORCE_FAILURE=true).
+

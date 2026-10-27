@@ -1,0 +1,154 @@
+# Alertas del pipeline (Grafana Alerting, provisionadas como código). Se evalúan cada 1 minuto.
+#
+#   AL01 · Corrida fallida o ausente (crítica): la última corrida terminó FAILED, o no hay filas
+#          nuevas en gold.dq_run_metrics hace más de ALERT_AL01_MINUTOS_SIN_CORRIDAS (30 = 2 ciclos de 15 min).
+#   AL02 · Caída del DQ Score (alta): el DQ Score estricto de la última corrida es menor que
+#          ALERT_AL02_DQ_SCORE_MINIMO (80 %), o cae más de ALERT_AL02_CAIDA_MAXIMA_PUNTOS (10) puntos
+#          respecto del promedio de las corridas de las 24 h anteriores.
+#
+# Los umbrales NO están en las consultas: son variables de entorno (.env.example / .env).
+# Este archivo es una PLANTILLA: al arrancar, grafana/render-alertas.sh reemplaza ${ALERT_...} por su valor
+# y deja el resultado en el provisioning (Grafana 11.4 no interpola variables en las reglas de alerta).
+# Para cambiar un umbral: editar la variable y correr  docker compose up -d grafana
+# Las consultas leen solo gold.* con el usuario de solo lectura "dashboard" (RNF04).
+# Hay un grupo por entorno: STAGING y PROD. DEV no tiene alertas porque inyecta 20 % de errores
+# a propósito para ejercitar las reglas, y AL02 quedaría disparada todo el tiempo.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Pipeline STAGING
+    folder: Alertas del pipeline
+    interval: 1m
+    rules:
+      - uid: al01-staging
+        title: AL01 · Corrida fallida o ausente · STAGING
+        condition: ALERTA
+        data:
+          - &al01_fallida
+            refId: ULTIMA_FALLIDA
+            relativeTimeRange: {from: 3600, to: 0}
+            datasourceUid: agro-staging
+            model:
+              refId: ULTIMA_FALLIDA
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT COALESCE((SELECT CASE WHEN run_status = 'FAILED' THEN 1 ELSE 0 END
+                FROM gold.dq_run_metrics ORDER BY run_start DESC LIMIT 1), 0) AS ultima_corrida_fallida
+          - &al01_minutos
+            refId: MINUTOS_SIN_CORRIDAS
+            relativeTimeRange: {from: 3600, to: 0}
+            datasourceUid: agro-staging
+            model:
+              refId: MINUTOS_SIN_CORRIDAS
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT COALESCE(round((extract(epoch FROM now() - max(run_start)) / 60)::numeric, 1), 999999)
+                AS minutos_sin_corridas FROM gold.dq_run_metrics
+          - &al01_alerta
+            refId: ALERTA
+            datasourceUid: __expr__
+            model:
+              refId: ALERTA
+              type: math
+              expression: $ULTIMA_FALLIDA > 0 || $MINUTOS_SIN_CORRIDAS > ${ALERT_AL01_MINUTOS_SIN_CORRIDAS}
+        noDataState: Alerting       # sin datos = no hay corridas registradas
+        execErrState: Alerting      # la base no responde = el pipeline tampoco puede escribir
+        for: 0s
+        annotations: &al01_annotations
+          summary: "AL01: la última corrida falló o no hay corridas nuevas hace más de ${ALERT_AL01_MINUTOS_SIN_CORRIDAS} min."
+          description: >-
+            Última corrida fallida (1 = sí): {{ index $values "ULTIMA_FALLIDA" }}.
+            Minutos desde la última corrida registrada: {{ index $values "MINUTOS_SIN_CORRIDAS" }}.
+            Revisar los logs del scheduler (docker compose logs scheduler-<entorno>) y gold.dq_run_metrics.
+        labels: {alert_id: AL01, severity: critica, entorno: staging}
+        isPaused: false
+
+      - uid: al02-staging
+        title: AL02 · Caída del DQ Score · STAGING
+        condition: ALERTA
+        data:
+          - &al02_score
+            refId: DQ_SCORE
+            relativeTimeRange: {from: 86400, to: 0}
+            datasourceUid: agro-staging
+            model:
+              refId: DQ_SCORE
+              editorMode: code
+              format: table
+              rawQuery: true
+              rawSql: >-
+                SELECT COALESCE((SELECT dq_score FROM gold.dq_run_metrics
+                WHERE status = 'ok' AND dq_score IS NOT NULL ORDER BY run_start DESC LIMIT 1), 100) AS dq_score
+          - &al02_caida
+            refId: CAIDA_VS_24H
+            relativeTimeRange: {from: 86400, to: 0}
+            datasourceUid: agro-staging
+            model:
+              refId: CAIDA_VS_24H
+              editorMode: code
+              format: table
+              rawQuery: true
+              # Promedio de las corridas de las 24 h ANTERIORES a la última (sin incluirla) menos la última.
+              rawSql: >-
+                WITH ok AS (SELECT run_start, dq_score FROM gold.dq_run_metrics
+                WHERE status = 'ok' AND dq_score IS NOT NULL),
+                ultima AS (SELECT run_start, dq_score FROM ok ORDER BY run_start DESC LIMIT 1)
+                SELECT COALESCE((SELECT avg(o.dq_score) FROM ok o, ultima u
+                WHERE o.run_start < u.run_start AND o.run_start >= u.run_start - interval '24 hours')
+                - (SELECT dq_score FROM ultima), 0)::numeric(6, 2) AS caida_puntos
+          - &al02_alerta
+            refId: ALERTA
+            datasourceUid: __expr__
+            model:
+              refId: ALERTA
+              type: math
+              expression: $DQ_SCORE < ${ALERT_AL02_DQ_SCORE_MINIMO} || $CAIDA_VS_24H > ${ALERT_AL02_CAIDA_MAXIMA_PUNTOS}
+        noDataState: OK             # sin corridas con score: de eso se ocupa AL01
+        execErrState: Error
+        for: 0s
+        annotations: &al02_annotations
+          summary: "AL02: el DQ Score de la última corrida es menor que ${ALERT_AL02_DQ_SCORE_MINIMO} % o cayó más de ${ALERT_AL02_CAIDA_MAXIMA_PUNTOS} puntos contra el promedio de 24 h."
+          description: >-
+            DQ Score de la última corrida: {{ index $values "DQ_SCORE" }} %.
+            Caída contra el promedio de las 24 h anteriores: {{ index $values "CAIDA_VS_24H" }} puntos.
+            Revisar los hallazgos por regla en el dashboard de calidad y gold.dq_errors.
+        labels: {alert_id: AL02, severity: alta, entorno: staging}
+        isPaused: false
+
+  - orgId: 1
+    name: Pipeline PROD
+    folder: Alertas del pipeline
+    interval: 1m
+    rules:
+      - uid: al01-prod
+        title: AL01 · Corrida fallida o ausente · PROD
+        condition: ALERTA
+        data:
+          - {<<: *al01_fallida, datasourceUid: agro-prod}
+          - {<<: *al01_minutos, datasourceUid: agro-prod}
+          - *al01_alerta
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 0s
+        annotations: *al01_annotations
+        labels: {alert_id: AL01, severity: critica, entorno: prod}
+        isPaused: false
+
+      - uid: al02-prod
+        title: AL02 · Caída del DQ Score · PROD
+        condition: ALERTA
+        data:
+          - {<<: *al02_score, datasourceUid: agro-prod}
+          - {<<: *al02_caida, datasourceUid: agro-prod}
+          - *al02_alerta
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations: *al02_annotations
+        labels: {alert_id: AL02, severity: alta, entorno: prod}
+        isPaused: false

@@ -13,13 +13,14 @@ import traceback
 from datetime import UTC, datetime
 
 from src import pipeline
-from src.common import db
+from src.common import db, migrations
 from src.config import get_settings
 
 
 def main() -> None:
     interval = int(os.getenv("PIPELINE_INTERVAL_SECONDS", "900"))
     engine = db.get_engine()
+    migrations.ensure_schema(engine)   # bases creadas antes de las columnas de monitoreo
     print(f"[SCHEDULER] Entorno {get_settings().environment.upper()} · corrida cada {interval}s.")
     while True:
         started = time.monotonic()

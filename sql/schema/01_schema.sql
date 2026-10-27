@@ -75,6 +75,15 @@ SET dq_score = round(valid::numeric / total * 100, 2),
     pct_utilizable = round((valid + warning)::numeric / total * 100, 2)
 WHERE total > 0;
 
+-- Monitoreo de corridas (alertas AL01 / AL02, RNF08 y RNF09). Las corridas viejas quedan en NULL.
+-- El pipeline aplica las mismas columnas al arrancar (src/common/migrations.py), porque los
+-- volúmenes existentes no vuelven a correr este archivo.
+ALTER TABLE gold.dq_run_metrics ADD COLUMN IF NOT EXISTS run_status TEXT CHECK (run_status IN ('SUCCESS', 'FAILED'));
+ALTER TABLE gold.dq_run_metrics ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+ALTER TABLE gold.dq_run_metrics ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ;
+ALTER TABLE gold.dq_run_metrics ADD COLUMN IF NOT EXISTS duration_seconds NUMERIC(10, 2);
+ALTER TABLE gold.dq_run_metrics ADD COLUMN IF NOT EXISTS last_measured_at TIMESTAMPTZ;  -- máximo timestamp medido del lote
+
 -- Registro de errores detectados (RF08): rechazos y warnings, con la identificación del registro.
 CREATE TABLE IF NOT EXISTS gold.dq_errors (
     error_id     BIGSERIAL PRIMARY KEY,
