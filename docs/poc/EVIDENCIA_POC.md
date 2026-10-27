@@ -14,6 +14,7 @@ Todos los números de este documento salen de **una corrida real** del pipeline.
 | [05_casos_punta_a_punta.md](05_casos_punta_a_punta.md) | Casos DQ10 (LIT-05) y DQ05 (LIT-02), de Bronze a Gold |
 | [06a_test_en_rojo_local.txt](06a_test_en_rojo_local.txt), [06b_pytest_y_cobertura.txt](06b_pytest_y_cobertura.txt) | Test que falla y suite completa en verde con cobertura |
 | [07_grafana_consultas.md](07_grafana_consultas.md), [07b_permisos_usuario_dashboard.txt](07b_permisos_usuario_dashboard.txt) | Consultas de los 37 paneles y prueba de permisos del usuario del dashboard |
+| [08_backfill_monitoreo.txt](08_backfill_monitoreo.txt) | Columnas de monitoreo completadas en las bases de la POC (`agro_poc`, `agro_poc_grafana`) desde datos ya registrados |
 | [../evidencia_alertas/](../evidencia_alertas/) | Monitoreo y alertas: escenarios provocados, capturas y RNF medidos (sección 8, ensayo del 26/10/2026) |
 
 ## 1. Ejecución
@@ -309,6 +310,16 @@ python scripts/verify_rnf.py                      # RNF medidos
 | B | Corrida IoT con `PIPELINE_IOT_ERROR_RATE=0.5`: DQ Score 44,44 % (4 VALID de 9) | AL02 | 23:16:14 | 23:17:00 | 0,76 | 23:17:17 |
 
 RNF11 (alerta en ≤ 30 min): **cumple** en los dos escenarios.
+
+**Dashboard de la POC:** las bases de la POC (`agro_poc` y `agro_poc_grafana`, la de la fuente «Agro · POC») no tienen scheduler, así que no migraron solas. Les apliqué la misma migración y completé las columnas de monitoreo con `scripts/backfill_monitoreo.py` ([08_backfill_monitoreo.txt](08_backfill_monitoreo.txt)), usando solo datos ya registrados:
+- `started_at`: el inicio de la primera etapa en `gold.pipeline_layer_metrics`.
+- `finished_at`: `run_end`.
+- `last_measured_at`: el máximo timestamp de Silver del lote.
+
+Resultado para la corrida de la POC:
+- SUCCESS, con duración de 9,67 s (de 23:06:58 a 23:07:07 UTC). La consola informó 9,9 s porque incluye el arranque del proceso.
+- Última medición a las 23:00 UTC, es decir, frescura de 7,1 min.
+- Captura: [capturas/grafana_05_salud_pipeline.png](capturas/grafana_05_salud_pipeline.png). El «6,0 days» desde la última corrida es real: la POC corrió el 20/10 y esa base no tiene scheduler.
 
 RNF medidos ([`../evidencia_alertas/rnf_medidos.md`](../evidencia_alertas/rnf_medidos.md)):
 - **Cumplen:** RNF02, RNF03, RNF04, RNF06, RNF08, RNF09 y RNF10.

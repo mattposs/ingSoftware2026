@@ -230,6 +230,8 @@ Para la evidencia se provocaron dos fallas en el entorno de staging con el scrip
 
 En ambos casos la alerta se disparó en menos de un minuto, muy por debajo de los 30 minutos que exige RNF11.
 
+[CAPTURA opcional: `docs/poc/capturas/grafana_05_salud_pipeline.png`, fila «Salud del pipeline» con la corrida de la POC: SUCCESS, 9,7 s de duración y 7,1 min de frescura.]
+
 [CAPTURA 11: `docs/evidencia_alertas/AL01_firing.png`, lista de reglas de alerta con AL01 en estado *Firing*.]
 Figura 11.11. Alerta AL01 disparada por una corrida fallida.
 
