@@ -424,7 +424,7 @@ const DOCKER_STEPS = [
 const PROJECT_STEPS = [
   {on:["git"], frames:{}, from:"git", to:"git", type:"Código", status:"OK", title:"1 · Se obtiene el código",
    text:"git clone del repositorio y trabajo en una rama feature/*. main solo se actualiza por Pull Request desde staging, con revisión del equipo.", file:".github/workflows/",
-   code:"git clone https://github.com/SebastianMB1/IngSoftwareETL.git\ngit checkout feature/entornos-etl-paso-a-paso"},
+   code:"git clone https://github.com/mattposs/ingSoftware2026.git\ncd ingSoftware2026"},
   {on:["cfg"], frames:{}, from:"git", to:"cfg", type:"Configuración", status:"OK", title:"2 · Configuración versionada",
    text:"Reglas, campos y parámetros viven en YAML: cambiar un umbral no requiere tocar código. Las contraseñas salen de .env.example (valores de desarrollo) y, si existe, .env las pisa; .env no se sube a Git.",
    docker:"<code>config/</code> se copia dentro de la imagen al construirla; las variables de entorno se inyectan al contenedor con <code>env_file</code>.", file:"config/ · .env.example",
@@ -435,7 +435,7 @@ const PROJECT_STEPS = [
    code:"ruff check .\npython -m src.validation.check_rules\npytest --cov=src\ncoverage report --include='src/validation/*' --fail-under=80\ndocker build -t agro-pipeline:<sha> ."},
   {on:["img"], frames:{}, from:"ci", to:"img", type:"Despliegue", status:"OK", title:"4 · Se publica la imagen por rama",
    text:"deploy.yml corre en cada push a dev, staging o main: ejecuta el CI, construye la imagen y la publica en GitHub Container Registry con los tags :dev, :staging, :prod y el hash del commit. main → production pide aprobación manual.",
-   docker:"Para usar la imagen publicada en lugar de construirla: <code>PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod</code>.", file:".github/workflows/deploy.yml",
+   docker:"Para usar la imagen publicada en lugar de construirla: <code>PROD_IMAGE=ghcr.io/mattposs/ingsoftware2026:prod docker compose up -d scheduler-prod</code>.", file:".github/workflows/deploy.yml",
    code:"dev     → environment development → imagen :dev\nstaging → environment staging     → imagen :staging\nmain    → environment production  → imagen :prod"},
   {on:[], frames:{}, from:"git", to:"git", type:"Ramas", status:"OK", title:"5 · Flujo de ramas y Pull Requests",
    text:"feature/* → PR → dev → PR → staging → PR → main. Una rama por entorno. main nunca se toca directo.", file:"docs/decisiones.md (D18)", code:"feature/*  →  dev  →  staging  →  main"},
