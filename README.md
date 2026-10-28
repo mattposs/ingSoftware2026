@@ -7,7 +7,7 @@
 
 > Prueba de concepto (POC) del Proyecto Grupal de Ingeniería de Software – UADE (2026).
 > Consultora: **Datum Sur** · Cliente (ficticio): **Grupo Agro del Litoral S.A.**
-> Documento de proyecto: [`docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf`](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf)
+> Documento de proyecto (entrega final): [PDF](<docs/TPO - Entrega Final - Grupo 2.pdf>) · Presentación: [PPTX](<docs/Datum Sur - Entrega Final 27-10-26 - Grupo 2.pptx>) · Demo: [video](docs/Demo.mp4)
 > Evidencia de la POC: [`docs/poc/EVIDENCIA_POC.md`](docs/poc/EVIDENCIA_POC.md) · Simulador para clase: [`docs/simulador_pipeline.html`](docs/simulador_pipeline.html)
 
 ## Tabla de contenidos
@@ -197,7 +197,9 @@ Guía de uso: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md). Para a
 ├── data/                      # Datos manuales para tests (no se versionan datos reales)
 ├── grafana/                   # Fuentes de datos, 3 dashboards y alertas (alerting/ + render-alertas.sh)
 ├── docs/
-│   ├── TPO_Pipeline_DataOps_Documento_Final_v7.{docx,pdf}
+│   ├── TPO - Entrega Final - Grupo 2.{docx,pdf}   # Documento de proyecto (entrega final)
+│   ├── Datum Sur - Entrega Final 27-10-26 - Grupo 2.pptx   # Presentación
+│   ├── Demo.mp4               # Video de la demo (Git LFS)
 │   ├── arquitectura.excalidraw
 │   ├── modelo_datos.md / .svg # Modelo de datos (Mermaid) + "Diagrama de base de datos.png"
 │   ├── simulador_pipeline.html / .md  # Simulador interactivo para clase y su guía
@@ -425,7 +427,7 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 
 ## Documentación
 
-- Documento de proyecto v7: [PDF](docs/TPO_Pipeline_DataOps_Documento_Final_v7.pdf) · [DOCX](docs/TPO_Pipeline_DataOps_Documento_Final_v7.docx)
+- Documento de proyecto (entrega final): [PDF](<docs/TPO - Entrega Final - Grupo 2.pdf>) · [DOCX](<docs/TPO - Entrega Final - Grupo 2.docx>)
 - Cambios sugeridos para la v8: [`docs/cambios_documento_v7.md`](docs/cambios_documento_v7.md)
 - Comparación con la entrega final y pasos de la adaptación: [`docs/revision/`](docs/revision/)
 - Decisiones técnicas (D1–D27): [`docs/decisiones.md`](docs/decisiones.md)
@@ -435,8 +437,8 @@ Para regenerarlos después de cambiar un dataset: `python -m src.governance.cata
 - Modelo de datos: [`docs/modelo_datos.md`](docs/modelo_datos.md) · [imagen](<docs/Diagrama de base de datos.png>)
 - Evidencia de la POC y sección 11: [`docs/poc/`](docs/poc/)
 - Simulador interactivo del pipeline (para clase): [`docs/simulador_pipeline.html`](docs/simulador_pipeline.html) · guía: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md) · skill para actualizarlo: [`.agents/skills/simulador-pipeline`](.agents/skills/simulador-pipeline/SKILL.md)
-- Presentación final: <!-- TODO: link -->
-- Demo / video: <!-- TODO: link -->
+- Presentación final: [PPTX](<docs/Datum Sur - Entrega Final 27-10-26 - Grupo 2.pptx>)
+- Demo / video: [`docs/Demo.mp4`](docs/Demo.mp4) (178 MB, guardado con Git LFS: al clonar se descarga solo si tenés `git lfs` instalado)
 
 ## Licencia
 
