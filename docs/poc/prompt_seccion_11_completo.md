@@ -27,7 +27,7 @@ REGLAS DE REDACCIÓN
 - Al final, agregá una lista de "Pendientes antes de entregar" con todos los [COMPLETAR] y las capturas que faltan.
 
 DATOS REALES DE LA POC
-Repositorio: https://github.com/SebastianMB1/IngSoftwareETL (rama feature/entornos-etl-paso-a-paso)
+Repositorio: https://github.com/mattposs/ingSoftware2026 (rama feature/entornos-etl-paso-a-paso)
 Video de la demo: [COMPLETAR: link]
 Comando de ejecución: `docker compose up -d --build` (levanta PostgreSQL 16, los 3 schedulers del pipeline —dev, staging y prod— y Grafana) y, para la corrida manual completa sobre los 8 campos: `docker compose run --rm -e APP_ENV=staging pipeline`. La corrida de la evidencia se hizo con esa misma configuración (STAGING: Open-Meteo + simulador IoT) sobre una base y un lake vacíos (agro_poc, storage/poc).
 

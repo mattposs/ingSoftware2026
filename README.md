@@ -1,6 +1,6 @@
 # Pipeline DataOps para calidad de datos agroclimáticos IoT
 
-[![CI](https://github.com/SebastianMB1/IngSoftwareETL/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastianMB1/IngSoftwareETL/actions/workflows/ci.yml)
+[![CI](https://github.com/mattposs/ingSoftware2026/actions/workflows/ci.yml/badge.svg)](https://github.com/mattposs/ingSoftware2026/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED)
@@ -240,8 +240,8 @@ Guía de uso: [`docs/simulador_pipeline.md`](docs/simulador_pipeline.md). Para a
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/SebastianMB1/IngSoftwareETL.git
-cd IngSoftwareETL
+git clone https://github.com/mattposs/ingSoftware2026.git
+cd ingSoftware2026
 
 # 2. Variables de entorno: no hace falta nada, el código y Docker usan .env.example.
 #    Para usar contraseñas propias: cp .env.example .env y editarlo (.env pisa a .env.example y no se sube a Git)
@@ -304,7 +304,7 @@ flowchart LR
     M -.->|push: CI + aprobación + deploy| PE[production · APP_ENV=prod]
 ```
 
-Cada push a `dev`, `staging` o `main` corre el CI completo, publica la imagen `ghcr.io/sebastianmb1/ingsoftwareetl:<entorno>` y ejecuta el paso **Deploy**. Mientras no haya servidor (la POC corre local), ese paso solo informa la imagen publicada. Para que un entorno local use la imagen publicada: `PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod`.
+Cada push a `dev`, `staging` o `main` corre el CI completo, publica la imagen `ghcr.io/mattposs/ingsoftware2026:<entorno>` y ejecuta el paso **Deploy**. Mientras no haya servidor (la POC corre local), ese paso solo informa la imagen publicada. Para que un entorno local use la imagen publicada: `PROD_IMAGE=ghcr.io/mattposs/ingsoftware2026:prod docker compose up -d scheduler-prod`.
 
 **Configuración pendiente en GitHub** (Settings → Environments):
 - En `production`, activar *Required reviewers* para que el deploy a producción pida aprobación.
