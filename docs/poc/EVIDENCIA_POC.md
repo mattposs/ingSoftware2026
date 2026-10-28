@@ -372,7 +372,7 @@ RNF medidos ([`../evidencia_alertas/rnf_medidos.md`](../evidencia_alertas/rnf_me
 
 ### Repositorio
 
-- Repositorio: https://github.com/SebastianMB1/IngSoftwareETL
+- Repositorio: https://github.com/mattposs/ingSoftware2026
 - Ramas de trabajo: `feature/entornos-etl-paso-a-paso` (POC) y `feature/alertas-pipeline` (monitoreo y alertas)
 - Evidencia: `docs/poc/` y `docs/evidencia_alertas/`
 

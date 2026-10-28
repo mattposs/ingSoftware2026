@@ -37,7 +37,7 @@ services:
 
   # Ejecución programada (EDT 7.3), un scheduler por entorno.
   # La imagen de cada entorno se puede apuntar a la publicada por deploy.yml (ramas dev/staging/main), ej.:
-  #   PROD_IMAGE=ghcr.io/sebastianmb1/ingsoftwareetl:prod docker compose up -d scheduler-prod
+  #   PROD_IMAGE=ghcr.io/mattposs/ingsoftware2026:prod docker compose up -d scheduler-prod
   scheduler-dev:
     <<: *scheduler
     image: ${DEV_IMAGE:-agro-pipeline:local}

@@ -18,7 +18,7 @@ docker compose run --rm -e APP_ENV=staging pipeline
 
 La corrida completa (extracción, validación y carga en Gold) tardó 9,9 segundos, por debajo del objetivo de 5 minutos por corrida.
 
-- Repositorio: https://github.com/SebastianMB1/IngSoftwareETL
+- Repositorio: https://github.com/mattposs/ingSoftware2026
 - Video de la demo: [COMPLETAR: link al video]
 
 [CAPTURA 1: terminal con `docker compose ps` mostrando los seis contenedores en ejecución (PostgreSQL en estado *healthy*, los tres schedulers, Grafana y Mailpit).]
