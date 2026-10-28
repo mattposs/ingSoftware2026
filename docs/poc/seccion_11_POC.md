@@ -19,7 +19,7 @@ docker compose run --rm -e APP_ENV=staging pipeline
 La corrida completa (extracción, validación y carga en Gold) tardó 9,9 segundos, por debajo del objetivo de 5 minutos por corrida.
 
 - Repositorio: https://github.com/mattposs/ingSoftware2026
-- Video de la demo: [COMPLETAR: link al video]
+- Video de la demo: `docs/Demo.mp4` en el repositorio (https://github.com/mattposs/ingSoftware2026/blob/main/docs/Demo.mp4)
 
 [CAPTURA 1: terminal con `docker compose ps` mostrando los seis contenedores en ejecución (PostgreSQL en estado *healthy*, los tres schedulers, Grafana y Mailpit).]
 Figura 11.1. Servicios de la POC levantados con Docker Compose.
@@ -275,7 +275,7 @@ En términos de la meta transversal, cada registro erróneo de la corrida fue de
 
 ### Pendientes antes de entregar
 
-1. [COMPLETAR: link al video de la demo] (11.1).
+1. ~~Link al video de la demo (11.1)~~: hecho, `docs/Demo.mp4`.
 2. [COMPLETAR: link o ID del run en rojo] y [COMPLETAR: link o ID del run en verde] de GitHub Actions (11.5). Se obtienen al crear la rama de prueba, abrir el pull request y revertir el cambio.
 3. Capturas 1 a 10, según los marcadores de cada subsección. Las capturas 11 a 14 ya están generadas en `docs/evidencia_alertas/`, junto con otras cuatro del mismo ensayo.
 4. **Capturas de Grafana (8 a 10):** el dashboard lee las bases de los entornos de desarrollo, staging y producción, no la base limpia usada para esta corrida. Antes de capturar conviene dejar esas bases solo con los campos LIT-01 a LIT-08, o filtrar por esos campos, para que las cifras coincidan con las de esta sección.
